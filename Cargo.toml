@@ -1,8 +1,2 @@
-cargo-features = ["edition2024"]
-
-[package]
-name = "ultimate-mod-man-rs"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
+[workspace]
+members = ["cli", "lib"]

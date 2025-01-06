@@ -1,5 +1,5 @@
 [package]
-name = "ssbu_mod_manager"
+name = "ultimate-mod-man-rs"
 version = "0.1.0"
 edition = "2024"
 

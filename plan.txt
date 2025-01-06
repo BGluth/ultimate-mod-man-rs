@@ -1,0 +1,73 @@
+High-level UX:
+- The user should be able to give a URL/ID (for now) to add to the mod collection
+- The user should be able to enable/disable mods.
+- From the CLI, the user should be able to give 1..* inputs of mods to add
+    - The process downloads all mods and then exits.
+- If there is a conflict from adding a mod, this does not stop the tool from adding the mod. Instead, the user is warned and must resolve conflicts later.
+- If there are no conflicts, the user can update the (Acropolis) mods on the Switch. If there are conflicts, the tool applies all mods that are not in a conflict state (but still notifies the user).
+- The resolve conflict tool:
+    - Displays all conflicts for all slots.
+    - Displays aggregated info first (eg. number of conflicts, names of mods with conflicts).
+    - Goes through each slot with a conflict and offers the user a way to resolve it:
+        - Finds all slots that are not offered taken by any other mods.
+        - Lets the user pick a slot that is available.
+        - If not slots are available, notifies the user.
+        - If the other mod(s) in question are able to be resolved, these are then displayed to the user.
+
+Commands:
+- Status:
+    - Displays the current state of installed mods.
+    - Is the default when no command is specified.
+- Add:
+    - Takes in a list of URLs/IDs from stdin.
+    - Downloads/processes these mods and quits when done.
+    - (OPTIONAL) Also provide a way for the user to install a specific version.
+- Resolve:
+    - Opens the interactive resolve dialog and allows the user to resolve any active conflicts.
+- Remove:
+    - Removes the list of mods (IDs/Names) that are installed.
+- Enable/Disable:
+    - Sets the state of a list of mods (IDs/Names) to all be enabled/disabled.
+- Switch update (Or a better name):
+    - Given a path to the Acropolis directory on a Switch (automatic maybe?), update the mods on the Switch
+- Switch compare:
+    - Compares the manager's installed mods to what's on the Switch.
+    - Notes unknown mods on the Switch.
+    - Notes version discrepancies between the Switch and the mod manager.
+- Check for updates:
+    - Query the mods on GameBanana and move to an updated version if possible.
+    - Only compares against mod manager state.
+- Clean cache:
+    - Removes all downloaded mods from the cache.
+
+Internal details:
+- Persistent state:
+    - State is broken down into the following:
+        - Installed mods (TOML?):
+            - Contains the list of mods "installed" and associated data.
+            - Data includes:
+                - Slot overrides (from conflict resolution)
+                - ID
+                - Name
+                - Version
+                - Enabled
+                - etc.
+        - Cached mods:
+            - When a mod is installed, it also gets an entry in the cache.
+            - Cached mods are stored in their expanded format on disk (is there a reason to keep them compressed?).
+    - State is either stored in the path that is given at the cmd line or uses a default dir given by the OS.
+- Conflict detection:
+    - All of the (relevant) files in each mod are assigned a slot.
+    - To keep things simple, while it's possible that two mods might update something in the same slot but otherwise don't overwrite files, this is still considered a conflict.
+    - A mod may install into multiple slots on multiple characters.
+        - From this, mods have a 1..* slot & character association.
+        - During conflict resolution, these individual `(char, slot)` tuples may be individually swapped with other free slots for a given character.
+    - Slot overrides are simply a map from (`old_slot` --> `new_slot`) for a given character.
+    - To keep things as generic as possible (to allow things like custom chars):
+        - The prefix from the slot directory is the key used to check for conflicts.
+- Switch Installation:
+    - For this:
+        - First scan to make sure all installed mods are cached and download if needed.
+        - Next scan all installed mods in Acropolis and check the mod directory hashes.
+        - For each hash that is different, update the version on the Switch (and print info to the user).
+        - Apply any slot overrides for any mods (just rename the directories according to the map).

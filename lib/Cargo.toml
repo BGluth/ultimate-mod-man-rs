@@ -1,7 +1,8 @@
-# Rust analyzer for VSCode still seems to need this...
-cargo-features = ["edition2024"]
-
 [package]
 name = "ultimate-mod-man-rs-lib"
 version = "0.1.0"
 edition = "2024"
+
+[dependencies]
+serde = { version = "1.0.217", features = ["derive"] }
+toml = "0.8.19"

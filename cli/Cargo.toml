@@ -8,3 +8,5 @@ ultimate-mod-man-rs-lib = { path = "../lib" }
 
 anyhow = "1.0.95"
 clap = { version = "4.5.23", features = ["derive"] }
+dirs = "5.0.1"
+log = "0.4.22"

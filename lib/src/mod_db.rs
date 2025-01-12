@@ -116,6 +116,10 @@ impl ModDb {
         })
     }
 
+    pub fn installed_mods(&self) -> impl Iterator<Item = &InstalledModInfo> {
+        self.entries.iter()
+    }
+
     fn empty() -> Self {
         Self {
             entries: Vec::new(),
@@ -124,18 +128,18 @@ impl ModDb {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct InstalledModInfo {
+pub struct InstalledModInfo {
     /// The ID of the mod on GameBanana.
-    id: ModId,
+    pub id: ModId,
 
     /// The name of the mod on GameBanana.
-    name: String,
+    pub name: String,
 
     /// Because there can be different variants available to download for a given mod, we need to also be able to specify which one we are using.
-    installed_variants: Vec<InstalledVariant>,
+    pub installed_variants: Vec<InstalledVariant>,
 
     /// The version that we have in the mod manager.
-    version: Option<String>,
+    pub version: Option<String>,
 }
 
 impl InstalledModInfo {
@@ -174,7 +178,7 @@ impl InstalledModInfo {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct CharacterSlotsAndOverrides {
+pub struct CharacterSlotsAndOverrides {
     /// The name of the character. Keeping this dynamic in order to support custom characters and not just skins.
     char_name: String,
 
@@ -193,7 +197,7 @@ struct SlotOverride {
 
 /// Starting at `0` to avoid confusion just because the first slot in the game is `00`.
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
-pub(crate) enum SkinSlot {
+pub enum SkinSlot {
     Zero,
     One,
     Two,
@@ -235,13 +239,13 @@ struct ModVariantVersioningInfo {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct InstalledVariant {
+pub struct InstalledVariant {
     /// The installed variant name is just the file name on GameBanana.   
-    name: String,
+    pub name: String,
 
     /// Slots used by the skin variant and any overrides.
-    slots_and_overrides: CharacterSlotsAndOverrides,
+    pub slots_and_overrides: CharacterSlotsAndOverrides,
 
     /// Whether or not the mod is enabled.
-    enabled: bool,
+    pub enabled: bool,
 }

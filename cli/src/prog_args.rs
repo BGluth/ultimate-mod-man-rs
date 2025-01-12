@@ -30,7 +30,7 @@ pub(crate) struct ProgArgs {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
-    /// Get the status of all installed mods or information on one or more specific mods.
+    /// Get the status of all installed mods or information on one or more specific mods. Do not specify any mods to get generic stats.
     Status(StatusArgs),
 
     /// Add new mods to the manager.

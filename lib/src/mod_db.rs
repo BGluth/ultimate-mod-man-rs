@@ -26,6 +26,7 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
+use lockfile::Lockfile;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -35,6 +36,7 @@ use thiserror::Error;
 // static DOWNLOAD_CACHE_ENTRY_INFO_FILE_NAME: &str = "cache_info";
 static MOD_INFO_FILE_NAME: &str = "mod_info.toml";
 static DOWNLOAD_CACHE_UNPACKED_DATA_DIR: &str = "data";
+static DB_LOCKFILE_NAME: &str = ".lockfile";
 
 pub type ModId = u64;
 
@@ -46,10 +48,29 @@ pub enum LoadPersistedStateErr {
     MissingModCacheInfoEntry(String),
 
     #[error(transparent)]
+    LockFileError(#[from] DBLockFileError),
+
+    #[error(transparent)]
     IoError(#[from] io::Error),
 
     #[error(transparent)]
     DeserializationError(#[from] toml::de::Error),
+}
+
+type DBLockFileResult<T> = Result<T, DBLockFileError>;
+
+#[derive(Debug, Error)]
+#[error(transparent)]
+pub struct DBLockFileError(#[from] lockfile::Error);
+
+// Need to ignore the unused field because we actually "use" this field when the struct gets dropped.
+#[allow(dead_code)]
+struct DBLockFile(Lockfile);
+
+impl DBLockFile {
+    fn new(p: &Path) -> DBLockFileResult<Self> {
+        Ok(Self(Lockfile::create(p.join(DB_LOCKFILE_NAME))?))
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -68,7 +89,8 @@ impl ModDb {
 
         let mut installed_mods = Vec::new();
 
-        // TODO: Acquire lockfile first...
+        // TODO: If there is a clean cross-platform way to access a in memory directory (eg. `/tmp` on Linux), place the lockfile there instead.
+        let _lock_file = DBLockFile::new(p)?;
 
         for entry in fs::read_dir(p)? {
             let installed_mod_dir = entry?;

@@ -288,6 +288,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "lockfile"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5be1cf190319c74ba3e45923624626ae2e43fe42ad7e60ff38ded81044c37630"
+
+[[package]]
 name = "log"
 version = "0.4.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -491,6 +497,7 @@ name = "ultimate-mod-man-rs-lib"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "lockfile",
  "log",
  "serde",
  "thiserror 2.0.9",

@@ -1,9 +1,8 @@
 use std::fmt::{self, Display, Formatter};
 
 use ptree::TreeBuilder;
-use ultimate_mod_man_rs_lib::mod_db::ModDb;
 
-use crate::prog_args::StatusArgs;
+use crate::mod_db::{ModDb, ModIdentifier};
 
 #[derive(Debug)]
 struct InstalledModAndVariantsInfo {
@@ -17,15 +16,17 @@ struct VariantNameAndEnabled {
     enabled: bool,
 }
 
-pub(crate) fn cmd_status(args: &StatusArgs, db: &ModDb) -> anyhow::Result<()> {
-    let no_mods_specified = args.mods.mods.is_empty();
+#[derive(Debug)]
+pub enum StatusCmdInfo {
+    Generic,
+    Specific(Vec<ModIdentifier>),
+}
 
-    match no_mods_specified {
-        false => todo!(),
-        true => print!("{}", GenericModStats::new(db)),
-    };
-
-    Ok(())
+pub(crate) fn cmd_status(args: &StatusCmdInfo, db: &ModDb) {
+    match args {
+        StatusCmdInfo::Generic => print!("{}", GenericModStats::new(db)),
+        StatusCmdInfo::Specific(vec) => todo!(),
+    }
 }
 
 #[derive(Debug, Default)]

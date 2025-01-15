@@ -30,7 +30,7 @@ pub(crate) struct ProgArgs {
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
     /// Get the status of all installed mods or information on one or more specific mods. Do not specify any mods to get generic stats.
-    Status(StatusArgs),
+    Status(StatusCliArgs),
 
     /// Add new mods to the manager.
     Add(AddArgs),
@@ -38,33 +38,27 @@ pub(crate) enum Command {
     /// Delete mods added to the manager.  
     Delete,
 
-    /// Install mods directly to the Switch.
-    Install(InstallArgs),
-
     /// Check if updates are available for any added mods.
     CheckForUpdates,
 
     /// Update the mods installed on a Switch with the mods that added to the manager.
-    UpdateInstalled,
+    SyncWithSwitch,
 
     /// Enable or disable a given set of mods.
     EnableDisable(EnableDisableArgs),
 
     /// Resolve any conflicts identified by the mod manager.
-    Resolve,
+    ResolveConflicts,
 
     /// Swap character slots used by a mod.
     ChangeSlot,
-
-    /// Purge the cache of downloaded mods.
-    CleanCache,
 
     /// Compare the state of a mod to state of the mod installed on a Switch.
     SwitchCompare,
 }
 
 #[derive(Args, Debug)]
-pub(crate) struct StatusArgs {
+pub(crate) struct StatusCliArgs {
     #[command(flatten)]
     pub(crate) mods: ModIdentifiersList,
 }
@@ -76,7 +70,7 @@ pub(crate) struct AddArgs {
 }
 
 #[derive(Args, Debug)]
-pub(crate) struct InstallArgs {
+pub(crate) struct InstallToSwitchArgs {
     #[arg(short = 'i', long)]
     install_path: PathBuf,
 }

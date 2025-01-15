@@ -19,6 +19,7 @@
 //! So on startup, the entire mod directory is read in and the installed mod structure is constructed.
 
 use std::{
+    collections::HashMap,
     convert::Infallible,
     fs::{self, create_dir_all},
     io,
@@ -64,6 +65,9 @@ type DBLockFileResult<T> = Result<T, DBLockFileError>;
 #[error(transparent)]
 pub struct DBLockFileError(#[from] lockfile::Error);
 
+#[derive(Debug)]
+struct ModNameResolver {}
+
 // Need to ignore the unused field because we actually "use" this field when the struct gets dropped.
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -76,7 +80,7 @@ impl DBLockFile {
 }
 
 #[derive(Debug)]
-pub struct ModDb {
+pub(crate) struct ModDb {
     directory_contents: ModDbDirectory,
 
     /// We hold the lock-file until the entire program exits.
@@ -84,13 +88,13 @@ pub struct ModDb {
 }
 
 impl ModDb {
-    pub fn load_from_path(p: &Path) -> LoadPersistedStateResult<Self> {
+    pub(crate) fn load_from_path(p: &Path) -> LoadPersistedStateResult<Self> {
         if !p.exists() {
             info!("Data directory does not exist at \"{p:?}\". Creating...");
             create_dir_all(p)?;
         }
 
-        let mut installed_mods = Vec::new();
+        let mut installed_mods = HashMap::new();
 
         // TODO: If there is a clean cross-platform way to access a in memory directory (eg. `/tmp` on Linux), place the lockfile there instead.
         let _lock_file = DBLockFile::new(p)?;
@@ -110,7 +114,7 @@ impl ModDb {
             if let Some(installed_mod) =
                 InstalledModInfo::read_installed_mod_contents_dir(&installed_mod_dir.path())?
             {
-                installed_mods.push(installed_mod);
+                installed_mods.insert(installed_mod.id, installed_mod);
             }
         }
 
@@ -122,22 +126,30 @@ impl ModDb {
         })
     }
 
-    pub fn get(ident: &ModIdentifier) -> InstalledModInfo {
+    pub(crate) fn get(&self, ident: &ModIdentifier) -> Option<&InstalledModInfo> {
         todo!()
     }
 
-    pub fn installed_mods(&self) -> impl Iterator<Item = &InstalledModInfo> {
-        self.directory_contents.entries.iter()
+    pub(crate) fn get_mut(&mut self, ident: &ModIdentifier) -> Option<&mut InstalledModInfo> {
+        todo!()
+    }
+
+    pub(crate) fn remove(&mut self, ident: &ModIdentifier) -> Option<InstalledModInfo> {
+        todo!()
+    }
+
+    pub(crate) fn installed_mods(&self) -> impl Iterator<Item = &InstalledModInfo> {
+        self.directory_contents.entries.values()
     }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct ModDbDirectory {
-    entries: Vec<InstalledModInfo>,
+    entries: HashMap<ModId, InstalledModInfo>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct InstalledModInfo {
+pub(crate) struct InstalledModInfo {
     /// The ID of the mod on GameBanana.
     pub id: ModId,
 
@@ -187,7 +199,7 @@ impl InstalledModInfo {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CharacterSlotsAndOverrides {
+pub(crate) struct CharacterSlotsAndOverrides {
     /// The name of the character. Keeping this dynamic in order to support custom characters and not just skins.
     char_name: String,
 
@@ -250,13 +262,13 @@ struct ModVariantVersioningInfo {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct InstalledVariant {
     /// The installed variant name is just the file name on GameBanana.   
-    pub name: String,
+    pub(crate) name: String,
 
     /// Slots used by the skin variant and any overrides.
-    pub slots_and_overrides: CharacterSlotsAndOverrides,
+    pub(crate) slots_and_overrides: CharacterSlotsAndOverrides,
 
     /// Whether or not the mod is enabled.
-    pub enabled: bool,
+    pub(crate) enabled: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -266,6 +278,13 @@ pub enum ModIdentifier {
 
     /// The name of the mod on Game Banana.
     Name(String),
+}
+
+/// Because mods can have multiple install payloads that affect multiple slots, we need a key type that identifies a mod and one of its specific variants.
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct ModIdentWithVariant {
+    ident: ModIdentifier,
+    variant_name: String,
 }
 
 impl PartialEq<ModId> for ModIdentifier {

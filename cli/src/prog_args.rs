@@ -1,5 +1,4 @@
 use std::{
-    convert::Infallible,
     env::current_dir,
     fmt::{self, Display},
     ops::Deref,
@@ -9,7 +8,7 @@ use std::{
 
 use clap::{Args, Parser, Subcommand};
 use log::warn;
-use ultimate_mod_man_rs_lib::mod_db::ModId;
+use ultimate_mod_man_rs_lib::mod_db::ModIdentifier;
 
 /// Tool for managing mods for SSBU.
 ///
@@ -105,39 +104,6 @@ pub(crate) struct ModIdentifiersList {
     pub(crate) mods: Vec<ModIdentifier>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) enum ModIdentifier {
-    /// The ID of the mod on Game Banana.
-    Id(ModId),
-
-    /// The name of the mod on Game Banana.
-    Name(String),
-}
-
-impl PartialEq<ModId> for ModIdentifier {
-    fn eq(&self, other_id: &ModId) -> bool {
-        matches!(self, ModIdentifier::Id(other) if other_id == other)
-    }
-}
-
-impl PartialEq<&str> for ModIdentifier {
-    fn eq(&self, other_name: &&str) -> bool {
-        matches!(self, ModIdentifier::Name(other) if other_name == other)
-    }
-}
-
-impl FromStr for ModIdentifier {
-    // Impossible for this conversion to fail.
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // If we can parse it as a ID (`u64`), then treat it as an ID. Otherwise just assume that we received the mod name.
-        s.parse::<u64>()
-            .map(ModIdentifier::Id)
-            .or_else(|_| Ok(ModIdentifier::Name(s.to_string())))
-    }
-}
-
 fn get_os_default_state_dir_path() -> DisplayablePathBuf {
     // TODO: Unwrap for now. Not sure how to handle `Result`s in default Clap args...
     match dirs::cache_dir() {
@@ -180,22 +146,5 @@ impl Deref for DisplayablePathBuf {
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::str::FromStr;
-
-    use super::ModIdentifier;
-
-    #[test]
-    fn mod_identifier_from_name_works() {
-        assert_eq!(ModIdentifier::from_str("./rust_mod").unwrap(), "./rust_mod");
-    }
-
-    #[test]
-    fn mod_identifier_from_id_works() {
-        assert_eq!(ModIdentifier::from_str("9001").unwrap(), 9001)
     }
 }

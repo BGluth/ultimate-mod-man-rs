@@ -65,6 +65,7 @@ pub struct DBLockFileError(#[from] lockfile::Error);
 
 // Need to ignore the unused field because we actually "use" this field when the struct gets dropped.
 #[allow(dead_code)]
+#[derive(Debug)]
 struct DBLockFile(Lockfile);
 
 impl DBLockFile {
@@ -73,9 +74,12 @@ impl DBLockFile {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct ModDb {
-    entries: Vec<InstalledModInfo>,
+    directory_contents: ModDbDirectory,
+
+    /// We hold the lock-file until the entire program exits.
+    _lock_file: DBLockFile,
 }
 
 impl ModDb {
@@ -83,8 +87,6 @@ impl ModDb {
         if !p.exists() {
             info!("Data directory does not exist at \"{p:?}\". Creating...");
             create_dir_all(p)?;
-
-            return Ok(Self::empty());
         }
 
         let mut installed_mods = Vec::new();
@@ -112,19 +114,21 @@ impl ModDb {
         }
 
         Ok(Self {
-            entries: installed_mods,
+            directory_contents: ModDbDirectory {
+                entries: installed_mods,
+            },
+            _lock_file,
         })
     }
 
     pub fn installed_mods(&self) -> impl Iterator<Item = &InstalledModInfo> {
-        self.entries.iter()
+        self.directory_contents.entries.iter()
     }
+}
 
-    fn empty() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
-    }
+#[derive(Debug, Deserialize, Serialize)]
+struct ModDbDirectory {
+    entries: Vec<InstalledModInfo>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

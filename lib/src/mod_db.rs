@@ -65,9 +65,6 @@ type DBLockFileResult<T> = Result<T, DBLockFileError>;
 #[error(transparent)]
 pub struct DBLockFileError(#[from] lockfile::Error);
 
-#[derive(Debug)]
-struct ModNameResolver {}
-
 // Need to ignore the unused field because we actually "use" this field when the struct gets dropped.
 #[allow(dead_code)]
 #[derive(Debug)]

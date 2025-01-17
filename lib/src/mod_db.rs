@@ -34,6 +34,8 @@ use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::download_artifact_parser::SkinSlot;
+
 // static MOD_DB_FILE_NAME: &str = "mods.db";
 // static MOD_DOWNLOAD_CACHE_DIR_NAME: &str = "download_cache";
 // static DOWNLOAD_CACHE_ENTRY_INFO_FILE_NAME: &str = "cache_info";
@@ -124,15 +126,28 @@ impl ModDb {
         })
     }
 
-    pub(crate) fn get(&self, ident: &ModIdentifier) -> Option<&InstalledModInfo> {
+    pub(crate) fn get(&self, id: &ModId) -> Option<&InstalledModInfo> {
         todo!()
     }
 
-    pub(crate) fn get_mut(&mut self, ident: &ModIdentifier) -> Option<&mut InstalledModInfo> {
+    pub(crate) fn get_mut(&mut self, id: &ModId) -> Option<&mut InstalledModInfo> {
         todo!()
     }
 
-    pub(crate) fn remove(&mut self, ident: &ModIdentifier) -> Option<InstalledModInfo> {
+    pub(crate) fn remove(&mut self, id: &ModId) -> Option<InstalledModInfo> {
+        todo!()
+    }
+
+    pub(crate) fn add_mod(&mut self, id: ModId) {
+        if let Some(entry) = self.directory_contents.entries.get(&id) {
+            info!(
+                "Mod {} (id: {}) is already installed. Ignoring...",
+                entry.name, id
+            );
+        }
+    }
+
+    pub(crate) fn delete_mod(&mut self, id: ModId) {
         todo!()
     }
 
@@ -198,11 +213,7 @@ impl InstalledModInfo {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct CharacterSlotsAndOverrides {
-    /// The name of the character. Keeping this dynamic in order to support custom characters and not just skins.
-    char_name: String,
-
-    /// The slots specified by the mod without changing them.
-    mod_default_slots: Vec<SkinSlot>,
+    char_and_default_slots: SkinSlot,
 
     /// In order to avoid conflicts (or if the user just wants a different slot), we can override the original slot to something else.
     slot_overrides: Vec<SlotOverride>,
@@ -212,41 +223,6 @@ pub(crate) struct CharacterSlotsAndOverrides {
 struct SlotOverride {
     old: SkinSlot,
     new: SkinSlot,
-}
-
-/// Starting at `0` to avoid confusion just because the first slot in the game is `00`.
-#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
-pub enum SkinSlot {
-    Zero,
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-}
-
-#[derive(Debug, Error)]
-#[error("\"{0}\" is not a valid character slot")]
-pub struct InvalidCharSlotErr(String);
-
-impl FromStr for SkinSlot {
-    type Err = InvalidCharSlotErr;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "00" => Ok(Self::Zero),
-            "01" => Ok(Self::One),
-            "02" => Ok(Self::Two),
-            "03" => Ok(Self::Three),
-            "04" => Ok(Self::Four),
-            "05" => Ok(Self::Five),
-            "06" => Ok(Self::Six),
-            "07" => Ok(Self::Seven),
-            _ => Err(InvalidCharSlotErr(s.to_string())),
-        }
-    }
 }
 
 /// Info that we can use to detect version changes.

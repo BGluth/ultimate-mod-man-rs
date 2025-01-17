@@ -4,7 +4,8 @@ use thiserror::Error;
 
 use crate::{
     cmds::status::StatusCmdInfo,
-    mod_db::{LoadPersistedStateErr, ModDb, ModIdentifier, ModWithVariantIdentifier, SkinSlot},
+    download_artifact_parser::SkinSlot,
+    mod_db::{LoadPersistedStateErr, ModDb, ModIdentifier, ModWithVariantIdentifier},
 };
 
 pub type ModManagerResult<T> = Result<T, ModManagerErr>;

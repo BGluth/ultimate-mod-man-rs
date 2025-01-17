@@ -10,6 +10,7 @@ pub(crate) fn add_mod(
     mod_db: &mut ModDb,
 ) -> ModManagerResult<()> {
     let m_id = resolver.resolve_mod_ident(ident);
+    mod_db.add_mod(m_id);
 
     todo!()
 }

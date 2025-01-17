@@ -1013,11 +1013,11 @@ dependencies = [
  "clap",
  "dirs",
  "log",
- "ultimate-mod-man-rs-lib",
+ "ultimate-mod-man-rs-core",
 ]
 
 [[package]]
-name = "ultimate-mod-man-rs-lib"
+name = "ultimate-mod-man-rs-core"
 version = "0.1.0"
 dependencies = [
  "chrono",

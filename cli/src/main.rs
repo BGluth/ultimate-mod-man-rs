@@ -1,6 +1,6 @@
 use clap::Parser;
 use prog_args::{ProgArgs, StatusCliArgs};
-use ultimate_mod_man_rs_lib::{cmds::status::StatusCmdInfo, mod_manager::ModManager};
+use ultimate_mod_man_rs_core::{cmds::status::StatusCmdInfo, mod_manager::ModManager};
 
 mod prog_args;
 

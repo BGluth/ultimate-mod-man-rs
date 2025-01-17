@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ultimate-mod-man-rs-lib = { path = "../lib" }
+ultimate-mod-man-rs-core = { path = "../core" }
 
 anyhow = "1.0.95"
 clap = { version = "4.5.23", features = ["derive"] }

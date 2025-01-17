@@ -1,5 +1,5 @@
 [package]
-name = "ultimate-mod-man-rs-lib"
+name = "ultimate-mod-man-rs-core"
 version = "0.1.0"
 edition = "2024"
 

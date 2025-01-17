@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::{
     cmds::status::StatusCmdInfo,
-    mod_db::{LoadPersistedStateErr, ModDb, ModIdentWithVariant, ModIdentifier, SkinSlot},
+    mod_db::{LoadPersistedStateErr, ModDb, ModIdentifier, ModWithVariantIdentifier, SkinSlot},
 };
 
 pub type ModManagerResult<T> = Result<T, ModManagerErr>;
@@ -66,7 +66,7 @@ impl ModManager {
 
     pub fn change_slot(
         &mut self,
-        k: ModIdentWithVariant,
+        k: ModWithVariantIdentifier,
         s1: SkinSlot,
         s2: SkinSlot,
     ) -> ModManagerResult<()> {

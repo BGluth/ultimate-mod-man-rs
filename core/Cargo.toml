@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+ultimate-mod-man-rs-scraper = { path = "../scraper" }
+
 chrono = { version = "0.4.39", features = ["serde"] }
 derive_builder = "0.20.2"
 lockfile = "0.4.0"

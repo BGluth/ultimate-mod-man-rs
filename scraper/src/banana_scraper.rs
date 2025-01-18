@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::mod_db::ModId;
+use crate::types::ModId;
 
 pub type BananaScraperResult<T> = Result<T, BananaScraperError>;
 

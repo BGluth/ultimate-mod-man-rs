@@ -1,10 +1,10 @@
 use std::path::Path;
 
 use thiserror::Error;
+use ultimate_mod_man_rs_scraper::download_artifact_parser::SkinSlot;
 
 use crate::{
     cmds::status::StatusCmdInfo,
-    download_artifact_parser::SkinSlot,
     mod_db::{LoadPersistedStateErr, ModDb, ModIdentifier, ModWithVariantIdentifier},
 };
 

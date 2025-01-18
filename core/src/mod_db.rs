@@ -33,8 +33,7 @@ use lockfile::Lockfile;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-
-use crate::download_artifact_parser::SkinSlot;
+use ultimate_mod_man_rs_scraper::download_artifact_parser::SkinSlot;
 
 // static MOD_DB_FILE_NAME: &str = "mods.db";
 // static MOD_DOWNLOAD_CACHE_DIR_NAME: &str = "download_cache";

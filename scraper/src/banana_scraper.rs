@@ -14,13 +14,17 @@ pub struct ScrapedBananaModData {
     variant_download_artifact: Vec<u8>,
 }
 
-pub fn get_mod_id_for_name(name: &str) -> ModId {
+fn get_mod_page_for_mod_id(name: ModId) -> BananaScraperResult<String> {
+    todo!()
+}
+
+pub fn resolve_mod_name(name: &str) -> BananaScraperResult<ModId> {
     todo!()
 }
 
 pub fn download_mod_variant(
     id: ModId,
-    variant_name: String,
+    variant_name: &str,
 ) -> BananaScraperResult<ScrapedBananaModData> {
     todo!()
 }

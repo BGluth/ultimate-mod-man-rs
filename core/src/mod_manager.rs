@@ -1,11 +1,15 @@
 use std::path::Path;
 
 use thiserror::Error;
-use ultimate_mod_man_rs_scraper::download_artifact_parser::SkinSlot;
+use ultimate_mod_man_rs_scraper::{
+    banana_scraper::{BananaClient, BananaScraperError},
+    download_artifact_parser::SkinSlot,
+};
 
 use crate::{
     cmds::status::StatusCmdInfo,
     mod_db::{LoadPersistedStateErr, ModDb, ModIdentifier, ModWithVariantIdentifier},
+    mod_name_resolver::{BananaModNameResolver, ModNameResolverError},
 };
 
 pub type ModManagerResult<T> = Result<T, ModManagerErr>;
@@ -14,17 +18,27 @@ pub type ModManagerResult<T> = Result<T, ModManagerErr>;
 pub enum ModManagerErr {
     #[error(transparent)]
     LoadPersistedStateErr(#[from] LoadPersistedStateErr),
+
+    #[error(transparent)]
+    BananaScraperError(#[from] BananaScraperError),
+
+    #[error(transparent)]
+    ModNameResolverError(#[from] ModNameResolverError),
 }
 
 #[derive(Debug)]
 pub struct ModManager {
     db: ModDb,
+    scraper: BananaClient,
+    mod_resolution_cache: BananaModNameResolver,
 }
 
 impl ModManager {
     pub fn new(mod_db_path: &Path) -> ModManagerResult<Self> {
         Ok(Self {
             db: ModDb::load_from_path(mod_db_path)?,
+            scraper: BananaClient::new()?,
+            mod_resolution_cache: BananaModNameResolver::new(mod_db_path)?,
         })
     }
 

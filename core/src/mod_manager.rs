@@ -1,14 +1,19 @@
 use std::path::Path;
 
+use log::info;
 use thiserror::Error;
 use ultimate_mod_man_rs_scraper::{
     banana_scraper::{BananaClient, BananaScraperError},
     download_artifact_parser::SkinSlot,
 };
+use ultimate_mod_man_rs_utils::{
+    types::{ModIdentifier, VariantAndIdentifier},
+    user_input_delegate::UserInputDelegate,
+};
 
 use crate::{
     cmds::status::StatusCmdInfo,
-    mod_db::{LoadPersistedStateErr, ModDb, ModIdentifier, ModWithVariantIdentifier},
+    mod_db::{LoadPersistedStateErr, ModDb},
     mod_name_resolver::{BananaModNameResolver, ModNameResolverError},
 };
 
@@ -27,18 +32,20 @@ pub enum ModManagerErr {
 }
 
 #[derive(Debug)]
-pub struct ModManager {
+pub struct ModManager<U: UserInputDelegate> {
     db: ModDb,
     scraper: BananaClient,
     mod_resolution_cache: BananaModNameResolver,
+    user_input_delegate: U,
 }
 
-impl ModManager {
-    pub fn new(mod_db_path: &Path) -> ModManagerResult<Self> {
+impl<U: UserInputDelegate> ModManager<U> {
+    pub fn new(mod_db_path: &Path, user_input_delegate: U) -> ModManagerResult<Self> {
         Ok(Self {
             db: ModDb::load_from_path(mod_db_path)?,
             scraper: BananaClient::new()?,
             mod_resolution_cache: BananaModNameResolver::new(mod_db_path)?,
+            user_input_delegate,
         })
     }
 
@@ -46,10 +53,33 @@ impl ModManager {
         todo!()
     }
 
-    pub fn add_mods<I: IntoIterator<Item = ModIdentifier>>(
+    pub async fn add_mods<I: IntoIterator<Item = VariantAndIdentifier>>(
         &mut self,
         idents: I,
     ) -> ModManagerResult<()> {
+        for ident_and_variant in idents {
+            let id_and_variant = self
+                .mod_resolution_cache
+                .resolve_key(ident_and_variant.clone(), &self.scraper)
+                .await?;
+
+            if self.db.exists(&id_and_variant) {
+                info!(
+                    "Skipping adding the mod variant {} since it was already installed. (If you want to check for mod updates, run the update command.)",
+                    ident_and_variant
+                );
+                return Ok(());
+            }
+
+            // Mod is not installed.
+            let downloaded_mod_variant = self
+                .scraper
+                .download_mod_variant(&mut self.user_input_delegate, &id_and_variant)
+                .await?;
+
+            self.db.add(&id_and_variant, downloaded_mod_variant);
+        }
+
         todo!()
     }
 
@@ -81,7 +111,7 @@ impl ModManager {
 
     pub fn change_slot(
         &mut self,
-        k: ModWithVariantIdentifier,
+        k: VariantAndIdentifier,
         s1: SkinSlot,
         s2: SkinSlot,
     ) -> ModManagerResult<()> {

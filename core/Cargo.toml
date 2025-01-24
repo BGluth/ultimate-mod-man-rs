@@ -5,9 +5,9 @@ edition = "2024"
 
 [dependencies]
 ultimate-mod-man-rs-scraper = { path = "../scraper" }
+ultimate-mod-man-rs-utils = { path = "../utils" }
 
 chrono = { version = "0.4.39", features = ["serde"] }
-derive_builder = "0.20.2"
 lockfile = "0.4.0"
 log = "0.4.22"
 ptree = "0.5.2"

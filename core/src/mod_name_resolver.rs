@@ -4,8 +4,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ultimate_mod_man_rs_scraper::banana_scraper::{BananaClient, BananaScraperError};
-
-use crate::mod_db::{ModId, ModIdentifier};
+use ultimate_mod_man_rs_utils::types::{ModId, ModIdentifier, VariantAndId, VariantAndIdentifier};
 
 pub type ModNameResolverResult<T> = Result<T, ModNameResolverError>;
 
@@ -46,11 +45,11 @@ impl BananaModNameResolver {
     pub(crate) async fn resolve_mod_ident(
         &mut self,
         scraper: &BananaClient,
-        ident: ModIdentifier,
+        ident: &ModIdentifier,
     ) -> ModNameResolverResult<ModId> {
         match ident {
-            ModIdentifier::Id(id) => Ok(id),
-            ModIdentifier::Name(name) => self.resolve_mod_name_to_id(scraper, &name).await,
+            ModIdentifier::Id(id) => Ok(*id),
+            ModIdentifier::Name(name) => self.resolve_mod_name_to_id(scraper, name).await,
         }
     }
 
@@ -65,5 +64,18 @@ impl BananaModNameResolver {
         };
 
         Ok(id)
+    }
+}
+
+impl BananaModNameResolver {
+    pub(crate) async fn resolve_key(
+        &mut self,
+        key: VariantAndIdentifier,
+        scraper: &BananaClient,
+    ) -> ModNameResolverResult<VariantAndId> {
+        Ok(VariantAndId {
+            id: self.resolve_mod_ident(scraper, &key.ident).await?,
+            variant_name: key.variant_name,
+        })
     }
 }

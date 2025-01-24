@@ -2360,6 +2360,7 @@ dependencies = [
  "dirs",
  "log",
  "ultimate-mod-man-rs-core",
+ "ultimate-mod-man-rs-utils",
 ]
 
 [[package]]
@@ -2367,7 +2368,6 @@ name = "ultimate-mod-man-rs-core"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "derive_builder",
  "lockfile",
  "log",
  "ptree",
@@ -2375,6 +2375,7 @@ dependencies = [
  "thiserror 2.0.11",
  "toml",
  "ultimate-mod-man-rs-scraper",
+ "ultimate-mod-man-rs-utils",
 ]
 
 [[package]]
@@ -2397,6 +2398,10 @@ dependencies = [
 [[package]]
 name = "ultimate-mod-man-rs-utils"
 version = "0.1.0"
+dependencies = [
+ "derive_builder",
+ "thiserror 2.0.11",
+]
 
 [[package]]
 name = "unicode-ident"

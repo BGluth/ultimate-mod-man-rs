@@ -4,14 +4,14 @@ use log::{debug, warn};
 use reqwest::{Client, ClientBuilder};
 use serde::Deserialize;
 use thiserror::Error;
-use ultimate_mod_man_rs_utils::user_input_delegate::UserInputDelegate;
+use ultimate_mod_man_rs_utils::{
+    types::{ModId, VariantAndId},
+    user_input_delegate::UserInputDelegate,
+};
 
-use crate::{
-    types::ModId,
-    utils::{
-        FuzzyMatchedStr, FuzzySearchMatchRes,
-        fuzzy_search_strings_and_return_one_or_many_depending_on_perfect_match,
-    },
+use crate::utils::{
+    FuzzyMatchedStr, FuzzySearchMatchRes,
+    fuzzy_search_strings_and_return_one_or_many_depending_on_perfect_match,
 };
 
 pub type BananaScraperResult<T> = Result<T, BananaScraperError>;
@@ -100,12 +100,11 @@ impl BananaClient {
     pub async fn download_mod_variant(
         &self,
         user_input_delegate: &mut impl UserInputDelegate,
-        id: ModId,
-        variant_name: &str,
+        key: &VariantAndId,
     ) -> BananaScraperResult<ScrapedBananaModData> {
-        debug!("Downloading mod variant {} - {}...", id, variant_name);
+        debug!("Downloading mod {}...", key);
 
-        let mod_page_req = format!("{}/apiv11/Mod/{}/ProfilePage", BANANA_ROOT, id);
+        let mod_page_req = format!("{}/apiv11/Mod/{}/ProfilePage", BANANA_ROOT, key.id);
         let mod_page_resp: ModPageResp =
             serde_json::from_str(&self.client.get(mod_page_req).send().await?.text().await?)?;
 
@@ -118,7 +117,7 @@ impl BananaClient {
 
         let match_idx = match fuzzy_search_strings_and_return_one_or_many_depending_on_perfect_match(
             &mod_file_names,
-            variant_name,
+            &key.variant_name,
         ) {
             FuzzySearchMatchRes::Perfect(idx) => idx,
             FuzzySearchMatchRes::Multiple(sorted_matches) => {
@@ -134,7 +133,7 @@ impl BananaClient {
             }
             FuzzySearchMatchRes::None => {
                 return Err(BananaScraperError::ModVariantDoesNotFound(
-                    variant_name.to_string(),
+                    key.variant_name.to_string(),
                     mod_page_resp.s_name,
                 ));
             }

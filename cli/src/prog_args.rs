@@ -8,7 +8,7 @@ use std::{
 
 use clap::{Args, Parser, Subcommand};
 use log::warn;
-use ultimate_mod_man_rs_core::mod_db::ModIdentifier;
+use ultimate_mod_man_rs_utils::types::ModIdentifier;
 
 /// Tool for managing mods for SSBU.
 ///

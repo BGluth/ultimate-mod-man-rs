@@ -1,8 +1,9 @@
 use std::fmt::{self, Display, Formatter};
 
 use ptree::TreeBuilder;
+use ultimate_mod_man_rs_utils::types::ModIdentifier;
 
-use crate::mod_db::{ModDb, ModIdentifier};
+use crate::mod_db::ModDb;
 
 #[derive(Debug)]
 struct InstalledModAndVariantsInfo {

@@ -1,13 +1,16 @@
 use clap::Parser;
+use cli_user_input_delegate::CliUserInputDelegate;
 use prog_args::{ProgArgs, StatusCliArgs};
 use ultimate_mod_man_rs_core::{cmds::status::StatusCmdInfo, mod_manager::ModManager};
 
+mod cli_user_input_delegate;
 mod prog_args;
 
 fn main() -> anyhow::Result<()> {
     let p_args = ProgArgs::parse();
+    let user_input_delegate = CliUserInputDelegate::new();
 
-    let mm = ModManager::new(&p_args.state_dir_path)?;
+    let mm = ModManager::new(&p_args.state_dir_path, user_input_delegate)?;
 
     match p_args.command {
         prog_args::Command::Status(status_args) => mm.status(status_args.into())?,

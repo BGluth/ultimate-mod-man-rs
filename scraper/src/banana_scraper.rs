@@ -31,6 +31,11 @@ pub enum BananaScraperError {
     #[error("The mod variant {0} was not found for the mod {1}.")]
     ModVariantDoesNotFound(String, String),
 
+    #[error(
+        "Got a different MD5 checksum for the artifact {0} of the mod {1}: (Expected: {2}, Ours: {3}). This file has likely been tampered with!"
+    )]
+    VariantMd5CheckSumMismatch(String, String, String, String),
+
     #[error(transparent)]
     JsonDeserializationError(#[from] serde_json::Error),
 
@@ -150,6 +155,17 @@ impl BananaClient {
             .bytes()
             .await?
             .to_vec();
+
+        // Verify that the MD5 hash matches (idk why they are using MD5 instead od something like SHA256...)
+        let calculated_md5 = format!("{:x}", md5::compute(&variant_download_artifact));
+        if calculated_md5 != selected_variant.s_md5_checksum {
+            return Err(BananaScraperError::VariantMd5CheckSumMismatch(
+                selected_variant.s_file.clone(),
+                mod_page_resp.s_name,
+                selected_variant.s_md5_checksum.clone(),
+                calculated_md5,
+            ));
+        }
 
         Ok(ScrapedBananaModData {
             mod_name: mod_page_resp.s_name,

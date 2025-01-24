@@ -8,6 +8,7 @@ ultimate-mod-man-rs-utils = { path = "../utils" }
 
 float-ord = "0.3.2"
 log = "0.4.25"
+md5 = "0.7.0"
 reqwest = "0.12.12"
 rust-fuzzy-search = "0.1.1"
 scraper = "0.22.0"

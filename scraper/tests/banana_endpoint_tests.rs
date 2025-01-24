@@ -38,7 +38,7 @@ async fn download_variant_works() {
     let res = BananaClient::new()
         .unwrap()
         .download_mod_variant(
-            DummyDelegate {},
+            &mut DummyDelegate {},
             BULLEY_MAGUIRE_MOD_ID,
             BULLEY_MAGUIRE_MOD_VARIANT,
         )

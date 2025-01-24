@@ -1,3 +1,5 @@
+use std::fmt::{self, Display, Formatter};
+
 use log::{debug, warn};
 use reqwest::{Client, ClientBuilder};
 use serde::Deserialize;
@@ -7,7 +9,8 @@ use ultimate_mod_man_rs_utils::user_input_delegate::UserInputDelegate;
 use crate::{
     types::ModId,
     utils::{
-        FuzzySearchMatchRes, fuzzy_search_strings_and_return_one_or_many_depending_on_perfect_match,
+        FuzzyMatchedStr, FuzzySearchMatchRes,
+        fuzzy_search_strings_and_return_one_or_many_depending_on_perfect_match,
     },
 };
 
@@ -37,7 +40,8 @@ pub enum BananaScraperError {
 
 #[derive(Debug)]
 pub struct ScrapedBananaModData {
-    name: String,
+    mod_name: String,
+    variant_name: String,
     version: Option<String>,
     variant_download_artifact: Vec<u8>,
 }
@@ -90,7 +94,7 @@ impl BananaClient {
 
     pub async fn download_mod_variant(
         &self,
-        user_input_delegate: impl UserInputDelegate,
+        user_input_delegate: &mut impl UserInputDelegate,
         id: ModId,
         variant_name: &str,
     ) -> BananaScraperResult<ScrapedBananaModData> {
@@ -112,16 +116,59 @@ impl BananaClient {
             variant_name,
         ) {
             FuzzySearchMatchRes::Perfect(idx) => idx,
-            FuzzySearchMatchRes::Multiple(vec) => todo!(),
+            FuzzySearchMatchRes::Multiple(sorted_matches) => {
+                let sorted_matches_massaged = sorted_matches
+                    .into_iter()
+                    .map(|x| MatchedFileVariant {
+                        variant_name: mod_file_names[x.idx],
+                        intern: x,
+                    })
+                    .collect::<Vec<_>>();
+
+                user_input_delegate.select_item_from_list(&sorted_matches_massaged)
+            }
             FuzzySearchMatchRes::None => {
                 return Err(BananaScraperError::ModVariantDoesNotFound(
                     variant_name.to_string(),
-                    mod_page_resp.s_Name,
+                    mod_page_resp.s_name,
                 ));
             }
         };
 
-        todo!()
+        let version = mod_page_resp
+            .s_version
+            .is_empty()
+            .then_some(mod_page_resp.s_version);
+
+        let selected_variant = &mod_page_resp.a_files[match_idx];
+        let payload_download_url = selected_variant.s_download_url.as_str();
+        let variant_download_artifact = self
+            .client
+            .get(payload_download_url)
+            .send()
+            .await?
+            .bytes()
+            .await?
+            .to_vec();
+
+        Ok(ScrapedBananaModData {
+            mod_name: mod_page_resp.s_name,
+            variant_name: selected_variant.s_file.clone(),
+            version,
+            variant_download_artifact,
+        })
+    }
+}
+
+#[derive(Debug)]
+struct MatchedFileVariant<'a> {
+    intern: FuzzyMatchedStr,
+    variant_name: &'a str,
+}
+
+impl Display for MatchedFileVariant<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{} -- ({:3})", self.variant_name, self.intern.score.0)
     }
 }
 
@@ -153,7 +200,10 @@ struct SearchRespItem {
 #[derive(Debug, Deserialize)]
 struct ModPageResp {
     #[serde(rename = "_sName")]
-    s_Name: String,
+    s_name: String,
+
+    #[serde(rename = "_sVersion")]
+    s_version: String,
 
     #[serde(rename = "_aFiles")]
     a_files: Vec<ModDownloadEntries>,

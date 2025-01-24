@@ -5,16 +5,19 @@ use rust_fuzzy_search::fuzzy_compare;
 
 pub(crate) type FuzzySearchScore = FloatOrd<f32>;
 
+#[derive(Debug)]
 pub(crate) enum FuzzySearchMatchRes {
     Perfect(usize),
+
+    /// Fuzzy matches sorted by score descending.
     Multiple(Vec<FuzzyMatchedStr>),
     None,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct FuzzyMatchedStr {
-    idx: usize,
-    score: FuzzySearchScore,
+    pub(crate) idx: usize,
+    pub(crate) score: FuzzySearchScore,
 }
 
 impl Eq for FuzzyMatchedStr {}

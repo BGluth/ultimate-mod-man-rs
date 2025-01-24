@@ -45,10 +45,10 @@ pub enum BananaScraperError {
 
 #[derive(Debug)]
 pub struct ScrapedBananaModData {
-    mod_name: String,
-    variant_name: String,
-    version: Option<String>,
-    variant_download_artifact: Vec<u8>,
+    pub mod_name: String,
+    pub variant_name: String,
+    pub version: Option<String>,
+    pub variant_download_artifact: Vec<u8>,
 }
 
 #[derive(Debug)]

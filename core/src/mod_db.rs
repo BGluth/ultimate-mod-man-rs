@@ -22,7 +22,7 @@ use std::{
     collections::HashMap,
     fs::{self, create_dir_all},
     io,
-    path::Path,
+    path::{Path, PathBuf}, str::FromStr,
 };
 
 use chrono::{DateTime, Utc};
@@ -35,9 +35,17 @@ use ultimate_mod_man_rs_scraper::{
 };
 use ultimate_mod_man_rs_utils::types::{ModId, VariantAndId};
 
-// static MOD_DB_FILE_NAME: &str = "mods.db";
-// static MOD_DOWNLOAD_CACHE_DIR_NAME: &str = "download_cache";
-// static DOWNLOAD_CACHE_ENTRY_INFO_FILE_NAME: &str = "cache_info";
+pub type ModDbResult<T> = Result<T, ModDbError>;
+
+#[derive(Debug, Error)]
+pub enum ModDbError {
+    #[error(transparent)]
+    IoError(#[from] io::Error),
+
+    #[error(transparent)]
+    DeserializationError(#[from] toml::de::Error),
+}
+
 static MOD_INFO_FILE_NAME: &str = "mod_info.toml";
 static DOWNLOAD_CACHE_UNPACKED_DATA_DIR: &str = "data";
 static DB_LOCKFILE_NAME: &str = ".lockfile";
@@ -65,6 +73,7 @@ type DBLockFileResult<T> = Result<T, DBLockFileError>;
 #[error(transparent)]
 pub struct DBLockFileError(#[from] lockfile::Error);
 
+// TODO: Add pending writes to the lock file to get transaction like behavior...
 // Need to ignore the unused field because we actually "use" this field when the struct gets dropped.
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -80,7 +89,7 @@ impl DBLockFile {
 pub(crate) struct ModDb {
     directory_contents: ModDbDirectory,
 
-    /// We hold the lock-file until the entire program exits.
+    /// We hold the lock-file until the InstalledModInfoentire program exits.
     _lock_file: DBLockFile,
 }
 
@@ -117,14 +126,31 @@ impl ModDb {
 
         Ok(Self {
             directory_contents: ModDbDirectory {
+                dir_path: p.into(),
                 entries: installed_mods,
             },
             _lock_file,
         })
     }
 
-    pub(crate) fn add(&mut self, key: &VariantAndId, payload: ScrapedBananaModData) {
-        // We call exists before this call, so an entry should always exist.
+    pub(crate) fn add(&mut self, key: &VariantAndId, payload: ScrapedBananaModData) -> ModDbResult<()> {
+        // We call exists before this call, so an entry for this specific variant should never exist.
+        // However, the mod directory may exist from another existing mod.
+
+        let mod_dir_path = self.directory_contents.get_path_to_mod(key.id);
+        let mod_variant_path = mod_dir_path.join(&key.variant_name);
+        fs::create_dir(mod_variant_path)?;
+
+        let mod_info_path = mod_dir_path.join(MOD_INFO_FILE_NAME);
+
+        // Load mod info from disk.
+        let mut mod_info: InstalledModInfo = match fs::exists(mod_info_path)? {
+            false => InstalledModInfo::new(key.id, payload.mod_name, payload.version),
+            true => toml::from_str(&fs::read_to_string(mod_dir_path.join(MOD_INFO_FILE_NAME))?)?,
+        };
+
+        mod_info.add_variant(key.variant_name.clone());
+
         todo!()
     }
 
@@ -155,7 +181,33 @@ impl ModDb {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct ModDbDirectory {
+    dir_path: PathBuf,
     entries: HashMap<ModId, InstalledModInfo>,
+}
+
+impl ModDbDirectory {
+    fn get_path_to_mod(&self, id: ModId) -> PathBuf {
+        let mod_name = &self.get_mod_name_expected(id);
+        self.dir_path.join(get_mod_directory_name(id, mod_name))
+    }
+
+    fn get_path_to_mod_variant(&self, key: &VariantAndId) -> PathBuf {
+        let mod_name = &self.get_mod_name_expected(key.id);
+        self.dir_path.join(get_path_section_from_key(key, mod_name))
+    }
+
+    fn get_mod_name_expected(&self, id: ModId) -> &str {
+        self.entries.get(&id).expect("Missing mod entry when constructing path to it's directory! This should never happen!").name.as_str()
+    }
+}
+
+fn get_path_section_from_key(key: &VariantAndId, mod_name: &str) -> PathBuf {
+    let mod_dir_name = get_mod_directory_name(key.id, mod_name);
+    format!("{}/{}", mod_dir_name, key.variant_name).into()
+}
+
+fn get_mod_directory_name(id: ModId, mod_name: &str) -> String {
+    format!("{}_{}", mod_name, id)
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -171,6 +223,21 @@ pub(crate) struct InstalledModInfo {
 
     /// The version that we have in the mod manager.
     pub version: Option<String>,
+}
+
+impl InstalledModInfo {
+    fn new(id: ModId, name: String, version: Option<String>) -> Self {
+        Self {
+            id,
+            name,
+            installed_variants: Vec::default(),
+            version,
+        }
+    }
+
+    fn add_variant(&mut self, name: String) {
+        todo!()
+    }
 }
 
 impl InstalledModInfo {
@@ -240,4 +307,14 @@ pub struct InstalledVariant {
 
     /// Whether or not the mod is enabled.
     pub(crate) enabled: bool,
+}
+
+impl InstalledVariant {
+    fn new(name: String) -> Self {
+        Self {
+            name,
+            slots_and_overrides: todo!(),
+            enabled: todo!(),
+        }
+    }
 }

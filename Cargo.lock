@@ -2384,7 +2384,12 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.11",
  "tokio",
+ "ultimate-mod-man-rs-utils",
 ]
+
+[[package]]
+name = "ultimate-mod-man-rs-utils"
+version = "0.1.0"
 
 [[package]]
 name = "unicode-ident"

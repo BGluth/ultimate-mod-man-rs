@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+ultimate-mod-man-rs-utils = { path = "../utils" }
+
 float-ord = "0.3.2"
 log = "0.4.25"
 reqwest = "0.12.12"

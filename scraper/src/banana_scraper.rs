@@ -2,6 +2,7 @@ use log::{debug, warn};
 use reqwest::{Client, ClientBuilder};
 use serde::Deserialize;
 use thiserror::Error;
+use ultimate_mod_man_rs_utils::user_input_delegate::UserInputDelegate;
 
 use crate::{
     types::ModId,
@@ -89,6 +90,7 @@ impl BananaClient {
 
     pub async fn download_mod_variant(
         &self,
+        user_input_delegate: impl UserInputDelegate,
         id: ModId,
         variant_name: &str,
     ) -> BananaScraperResult<ScrapedBananaModData> {

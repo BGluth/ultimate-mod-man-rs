@@ -22,7 +22,7 @@ use std::{
     collections::HashMap,
     fs::{self, create_dir_all},
     io,
-    path::{Path, PathBuf}, str::FromStr,
+    path::{Path, PathBuf},
 };
 
 use chrono::{DateTime, Utc};
@@ -133,7 +133,11 @@ impl ModDb {
         })
     }
 
-    pub(crate) fn add(&mut self, key: &VariantAndId, payload: ScrapedBananaModData) -> ModDbResult<()> {
+    pub(crate) fn add(
+        &mut self,
+        key: &VariantAndId,
+        payload: ScrapedBananaModData,
+    ) -> ModDbResult<()> {
         // We call exists before this call, so an entry for this specific variant should never exist.
         // However, the mod directory may exist from another existing mod.
 

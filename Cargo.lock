@@ -198,6 +198,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "325918d6fe32f23b19878fe4b34794ae41fc19ddbe53b10571a4874d44ffd39b"
 
 [[package]]
+name = "camino"
+version = "1.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b96ec4966b5813e2c0507c1f86115c8c5abaadc3980879c3424042a02fd1ad3"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2376,6 +2385,7 @@ name = "ultimate-mod-man-rs-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "camino",
  "clap",
  "dirs",
  "log",
@@ -2387,6 +2397,7 @@ dependencies = [
 name = "ultimate-mod-man-rs-core"
 version = "0.1.0"
 dependencies = [
+ "camino",
  "chrono",
  "lockfile",
  "log",
@@ -2402,6 +2413,7 @@ dependencies = [
 name = "ultimate-mod-man-rs-scraper"
 version = "0.1.0"
 dependencies = [
+ "camino",
  "float-ord",
  "infer",
  "log",

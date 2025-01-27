@@ -1,11 +1,6 @@
-use std::{
-    env::current_dir,
-    fmt::{self, Display},
-    ops::Deref,
-    path::PathBuf,
-    str::FromStr,
-};
+use std::env::current_dir;
 
+use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand};
 use log::warn;
 use ultimate_mod_man_rs_utils::types::ModIdentifier;
@@ -24,7 +19,7 @@ pub(crate) struct ProgArgs {
 
     /// Path to the directory where the mod manager state and cache is located.
     #[arg(short = 'p', long, default_value_t = get_os_default_state_dir_path())]
-    pub(crate) state_dir_path: DisplayablePathBuf,
+    pub(crate) state_dir_path: Utf8PathBuf,
 }
 
 #[derive(Debug, Subcommand)]
@@ -72,7 +67,7 @@ pub(crate) struct AddArgs {
 #[derive(Args, Debug)]
 pub(crate) struct InstallToSwitchArgs {
     #[arg(short = 'i', long)]
-    install_path: PathBuf,
+    install_path: Utf8PathBuf,
 }
 
 #[derive(Args, Debug)]
@@ -98,47 +93,17 @@ pub(crate) struct ModIdentifiersList {
     pub(crate) mods: Vec<ModIdentifier>,
 }
 
-fn get_os_default_state_dir_path() -> DisplayablePathBuf {
+fn get_os_default_state_dir_path() -> Utf8PathBuf {
     // TODO: Unwrap for now. Not sure how to handle `Result`s in default Clap args...
-    match dirs::cache_dir() {
-        Some(p) => p.into(),
+    let res = match dirs::cache_dir() {
+        Some(p) => p,
         None => {
             warn!(
                 "Unable to find a config directory for this OS! Using the current directory instead as a fallback, but this should be considered a bug and be reported to the maintainers."
             );
-            current_dir().unwrap().into()
+            current_dir().unwrap()
         }
-    }
-}
+    };
 
-#[derive(Clone, Debug)]
-pub(crate) struct DisplayablePathBuf(PathBuf);
-
-impl Display for DisplayablePathBuf {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl From<PathBuf> for DisplayablePathBuf {
-    fn from(v: PathBuf) -> Self {
-        Self(v)
-    }
-}
-
-impl FromStr for DisplayablePathBuf {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let res = PathBuf::from_str(s)?;
-        Ok(Self(res))
-    }
-}
-
-impl Deref for DisplayablePathBuf {
-    type Target = PathBuf;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    Utf8PathBuf::from_path_buf(res).unwrap()
 }

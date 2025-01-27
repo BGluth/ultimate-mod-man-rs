@@ -1,5 +1,6 @@
-use std::{collections::HashMap, fs, path::Path};
+use std::{collections::HashMap, fs};
 
+use camino::Utf8Path;
 use log::info;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -25,7 +26,7 @@ pub(crate) struct BananaModNameResolver {
 }
 
 impl BananaModNameResolver {
-    pub(crate) fn new(p: &Path) -> ModNameResolverResult<Self> {
+    pub(crate) fn new(p: &Utf8Path) -> ModNameResolverResult<Self> {
         let path = p.join(CACHED_MOD_NAME_RESOLUTION_STATE_NAME);
 
         let local_cache = match fs::read_to_string(path.clone()) {

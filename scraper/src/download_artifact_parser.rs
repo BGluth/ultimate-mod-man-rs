@@ -1,8 +1,6 @@
-use std::{
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::str::FromStr;
 
+use camino::{Utf8Path, Utf8PathBuf};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -22,7 +20,7 @@ pub struct ModPayloadParseInfo {
     compressed_bytes: Vec<u8>,
 
     /// Some mods (idk why) don't have the "root" mod directory at the very top, so we need to scan before decompression and look for it.
-    mod_root_directory_offset: Option<PathBuf>,
+    mod_root_directory_offset: Option<Utf8PathBuf>,
 
     expandable_archive: Box<dyn ExpandableArchive>,
 }
@@ -74,10 +72,8 @@ impl ModPayloadParseInfo {
             })?;
 
         // Just as an additional check, if the file has a visible extension that we recognize, if it differs from the magic number, output a warning to the user (but continue going).
-        if let Some(comp_type_from_ext) = PathBuf::from(variant_file_name).extension() {
-            if let Ok(c_type_from_f_name) =
-                CompressionType::from_str(comp_type_from_ext.to_string_lossy().as_ref())
-            {
+        if let Some(comp_type_from_ext) = Utf8PathBuf::from(variant_file_name).extension() {
+            if let Ok(c_type_from_f_name) = CompressionType::from_str(comp_type_from_ext) {
                 if c_type_from_f_name != magic_number_compression_type {
                     warn!(
                         "The magic number of the archive file does not match the extension in the file name. This is a bit weird, but regardless this is still fine."
@@ -103,13 +99,13 @@ impl ModPayloadParseInfo {
         Ok(h)
     }
 
-    fn search_for_mod_root(archive: &Box<dyn ExpandableArchive>) -> Option<PathBuf> {
+    fn search_for_mod_root(archive: &Box<dyn ExpandableArchive>) -> Option<Utf8PathBuf> {
         todo!()
     }
 }
 
 pub trait ExpandableFile {
-    fn write(&mut self, path: &Path) -> VariantParseResult<()> {
+    fn write(&mut self, path: &Utf8Path) -> VariantParseResult<()> {
         todo!()
     }
 }
@@ -117,8 +113,8 @@ pub trait ExpandableFile {
 pub trait ExpandableArchive {
     fn get_file_names_and_write_handles(
         &self,
-    ) -> Box<dyn Iterator<Item = (PathBuf, Box<dyn ExpandableFile>)>>;
-    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = PathBuf>>;
+    ) -> Box<dyn Iterator<Item = (Utf8PathBuf, Box<dyn ExpandableFile>)>>;
+    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>>;
 }
 
 #[derive(Debug)]
@@ -127,11 +123,11 @@ struct ZipParser {}
 impl ExpandableArchive for ZipParser {
     fn get_file_names_and_write_handles(
         &self,
-    ) -> Box<dyn Iterator<Item = (PathBuf, Box<dyn ExpandableFile>)>> {
+    ) -> Box<dyn Iterator<Item = (Utf8PathBuf, Box<dyn ExpandableFile>)>> {
         todo!()
     }
 
-    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = PathBuf>> {
+    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>> {
         todo!()
     }
 }
@@ -148,11 +144,11 @@ struct RarParser {}
 impl ExpandableArchive for RarParser {
     fn get_file_names_and_write_handles(
         &self,
-    ) -> Box<dyn Iterator<Item = (PathBuf, Box<dyn ExpandableFile>)>> {
+    ) -> Box<dyn Iterator<Item = (Utf8PathBuf, Box<dyn ExpandableFile>)>> {
         todo!()
     }
 
-    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = PathBuf>> {
+    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>> {
         todo!()
     }
 }
@@ -163,11 +159,11 @@ struct SevenZipParser {}
 impl ExpandableArchive for SevenZipParser {
     fn get_file_names_and_write_handles(
         &self,
-    ) -> Box<dyn Iterator<Item = (PathBuf, Box<dyn ExpandableFile>)>> {
+    ) -> Box<dyn Iterator<Item = (Utf8PathBuf, Box<dyn ExpandableFile>)>> {
         todo!()
     }
 
-    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = PathBuf>> {
+    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>> {
         todo!()
     }
 }
@@ -178,11 +174,11 @@ struct TarParser {}
 impl ExpandableArchive for TarParser {
     fn get_file_names_and_write_handles(
         &self,
-    ) -> Box<dyn Iterator<Item = (PathBuf, Box<dyn ExpandableFile>)>> {
+    ) -> Box<dyn Iterator<Item = (Utf8PathBuf, Box<dyn ExpandableFile>)>> {
         todo!()
     }
 
-    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = PathBuf>> {
+    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>> {
         todo!()
     }
 }

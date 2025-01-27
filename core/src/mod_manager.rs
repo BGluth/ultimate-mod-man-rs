@@ -1,5 +1,4 @@
-use std::path::Path;
-
+use camino::Utf8Path;
 use log::info;
 use thiserror::Error;
 use ultimate_mod_man_rs_scraper::{
@@ -40,7 +39,7 @@ pub struct ModManager<U: UserInputDelegate> {
 }
 
 impl<U: UserInputDelegate> ModManager<U> {
-    pub fn new(mod_db_path: &Path, user_input_delegate: U) -> ModManagerResult<Self> {
+    pub fn new(mod_db_path: &Utf8Path, user_input_delegate: U) -> ModManagerResult<Self> {
         Ok(Self {
             db: ModDb::load_from_path(mod_db_path)?,
             scraper: BananaClient::new()?,

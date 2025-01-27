@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ultimate-mod-man-rs-core = { path = "../core" }
-ultimate-mod-man-rs-utils = { path = "../utils" }
-
 anyhow = "1.0.95"
+camino = "1.1.9"
 clap = { version = "4.5.23", features = ["derive"] }
 dirs = "6.0.0"
 log = "0.4.22"
+ultimate-mod-man-rs-core = { path = "../core" }
+ultimate-mod-man-rs-utils = { path = "../utils" }

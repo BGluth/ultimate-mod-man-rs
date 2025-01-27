@@ -22,9 +22,9 @@ use std::{
     collections::HashMap,
     fs::{self, create_dir_all},
     io,
-    path::{Path, PathBuf},
 };
 
+use camino::{Utf8Path, Utf8PathBuf};
 use chrono::{DateTime, Utc};
 use lockfile::Lockfile;
 use log::{info, warn};
@@ -80,7 +80,7 @@ pub struct DBLockFileError(#[from] lockfile::Error);
 struct DBLockFile(Lockfile);
 
 impl DBLockFile {
-    fn new(p: &Path) -> DBLockFileResult<Self> {
+    fn new(p: &Utf8Path) -> DBLockFileResult<Self> {
         Ok(Self(Lockfile::create(p.join(DB_LOCKFILE_NAME))?))
     }
 }
@@ -94,7 +94,7 @@ pub(crate) struct ModDb {
 }
 
 impl ModDb {
-    pub(crate) fn load_from_path(p: &Path) -> LoadPersistedStateResult<Self> {
+    pub(crate) fn load_from_path(p: &Utf8Path) -> LoadPersistedStateResult<Self> {
         if !p.exists() {
             info!("Data directory does not exist at \"{p:?}\". Creating...");
             create_dir_all(p)?;
@@ -105,7 +105,7 @@ impl ModDb {
         // TODO: If there is a clean cross-platform way to access a in memory directory (eg. `/tmp` on Linux), place the lockfile there instead.
         let _lock_file = DBLockFile::new(p)?;
 
-        for entry in fs::read_dir(p)? {
+        for entry in Utf8Path::read_dir_utf8(p)? {
             let installed_mod_dir = entry?;
 
             // There should only be directories in the mod folder.
@@ -118,7 +118,7 @@ impl ModDb {
             }
 
             if let Some(installed_mod) =
-                InstalledModInfo::read_installed_mod_contents_dir(&installed_mod_dir.path())?
+                InstalledModInfo::read_installed_mod_contents_dir(installed_mod_dir.path())?
             {
                 installed_mods.insert(installed_mod.id, installed_mod);
             }
@@ -185,17 +185,17 @@ impl ModDb {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct ModDbDirectory {
-    dir_path: PathBuf,
+    dir_path: Utf8PathBuf,
     entries: HashMap<ModId, InstalledModInfo>,
 }
 
 impl ModDbDirectory {
-    fn get_path_to_mod(&self, id: ModId) -> PathBuf {
+    fn get_path_to_mod(&self, id: ModId) -> Utf8PathBuf {
         let mod_name = &self.get_mod_name_expected(id);
         self.dir_path.join(get_mod_directory_name(id, mod_name))
     }
 
-    fn get_path_to_mod_variant(&self, key: &VariantAndId) -> PathBuf {
+    fn get_path_to_mod_variant(&self, key: &VariantAndId) -> Utf8PathBuf {
         let mod_name = &self.get_mod_name_expected(key.id);
         self.dir_path.join(get_path_section_from_key(key, mod_name))
     }
@@ -205,7 +205,7 @@ impl ModDbDirectory {
     }
 }
 
-fn get_path_section_from_key(key: &VariantAndId, mod_name: &str) -> PathBuf {
+fn get_path_section_from_key(key: &VariantAndId, mod_name: &str) -> Utf8PathBuf {
     let mod_dir_name = get_mod_directory_name(key.id, mod_name);
     format!("{}/{}", mod_dir_name, key.variant_name).into()
 }
@@ -246,7 +246,7 @@ impl InstalledModInfo {
 
 impl InstalledModInfo {
     fn read_installed_mod_contents_dir(
-        installed_mod_path: &Path,
+        installed_mod_path: &Utf8Path,
     ) -> LoadPersistedStateResult<Option<Self>> {
         let mod_info_path = installed_mod_path.join(MOD_INFO_FILE_NAME);
 

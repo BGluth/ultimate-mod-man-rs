@@ -1,9 +1,18 @@
-use std::str::FromStr;
+use std::{
+    fs::{self, File},
+    io::{self, Cursor, Read, Write},
+    path::PathBuf,
+    str::FromStr,
+};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use unrar::{Archive, error::UnrarError};
+use zip::{ZipArchive, result::ZipError};
+
+const MAGIC_NUMBER_BYTE_READ_AMOUNT: usize = 100;
 
 pub type VariantParseResult<T> = Result<T, VariantParseError>;
 
@@ -14,11 +23,26 @@ pub enum VariantParseError {
 
     #[error("Unable to determine the archive type from it's magic number ({0})")]
     VariantPayloadNotARecognizableArchive(String, #[source] CompressionTypeFromExtStrErr),
+
+    #[error(transparent)]
+    InternArchiveParseError(#[from] InternArchiveParserErr),
+
+    #[error(transparent)]
+    Io(#[from] io::Error),
+}
+
+type InternArchiveParserResult<T> = Result<T, InternArchiveParserErr>;
+
+#[derive(Debug, Error)]
+pub enum InternArchiveParserErr {
+    #[error(transparent)]
+    Zip(#[from] ZipError),
+
+    #[error(transparent)]
+    Rar(#[from] UnrarError),
 }
 
 pub struct ModPayloadParseInfo {
-    compressed_bytes: Vec<u8>,
-
     /// Some mods (idk why) don't have the "root" mod directory at the very top, so we need to scan before decompression and look for it.
     mod_root_directory_offset: Option<Utf8PathBuf>,
 
@@ -26,16 +50,19 @@ pub struct ModPayloadParseInfo {
 }
 
 impl ModPayloadParseInfo {
-    pub fn new(variant_name: &str, compressed_bytes: Vec<u8>) -> VariantParseResult<Self> {
-        let expandable_archive = Self::open_archive(variant_name, &compressed_bytes)?;
+    pub fn new(archive_path: &Utf8Path) -> VariantParseResult<Self> {
+        let variant_name = archive_path.file_name().unwrap();
+
+        let archive_h = File::open(archive_path)?;
+        let expandable_archive = Self::open_archive(variant_name, archive_path)?;
 
         let all_archive_file_paths = expandable_archive
             .get_paths_of_all_files()
             .collect::<Vec<_>>();
+
         let mod_root_directory_offset = Self::search_for_mod_root(&expandable_archive);
 
         Ok(Self {
-            compressed_bytes,
             mod_root_directory_offset,
             expandable_archive,
         })
@@ -43,11 +70,15 @@ impl ModPayloadParseInfo {
 
     fn open_archive(
         variant_file_name: &str,
-        compressed_bytes: &[u8],
+        archive_path: &Utf8Path,
     ) -> VariantParseResult<Box<dyn ExpandableArchive>> {
-        let archive_format = Self::determine_archive_format(variant_file_name, compressed_bytes)?;
+        let mut header_bytes = Vec::with_capacity(MAGIC_NUMBER_BYTE_READ_AMOUNT);
+        File::open(archive_path)?
+            .take(MAGIC_NUMBER_BYTE_READ_AMOUNT as u64)
+            .read_to_end(&mut header_bytes)?;
 
-        todo!()
+        let archive_format = Self::determine_archive_format(variant_file_name, &header_bytes)?;
+        Self::open_archive_and_get_handle(archive_path, archive_format)
     }
 
     fn determine_archive_format(
@@ -85,13 +116,13 @@ impl ModPayloadParseInfo {
         Ok(magic_number_compression_type)
     }
 
-    fn open_archive_and_get_handle(
-        compressed_bytes: &[u8],
+    fn open_archive_and_get_handle<'a>(
+        archive_path: &Utf8Path,
         comp_type: CompressionType,
-    ) -> VariantParseResult<Box<dyn ExpandableArchive>> {
-        let h = match comp_type {
-            CompressionType::Zip => todo!(),
-            CompressionType::Rar => todo!(),
+    ) -> VariantParseResult<Box<dyn ExpandableArchive + 'a>> {
+        let h: Box<dyn ExpandableArchive> = match comp_type {
+            CompressionType::Zip => Box::new(ZipParser::new(fs::read(archive_path)?)?),
+            CompressionType::Rar => Box::new(RarParser::new(archive_path.to_path_buf())?),
             CompressionType::SevenZip => todo!(),
             CompressionType::Tar => todo!(),
         };
@@ -118,7 +149,9 @@ pub trait ExpandableArchive {
 }
 
 #[derive(Debug)]
-struct ZipParser {}
+struct ZipParser {
+    intern: ZipArchive<Cursor<Vec<u8>>>,
+}
 
 impl ExpandableArchive for ZipParser {
     fn get_file_names_and_write_handles(
@@ -133,13 +166,17 @@ impl ExpandableArchive for ZipParser {
 }
 
 impl ZipParser {
-    fn new(compression_bytes: Vec<u8>) -> Self {
-        todo!()
+    fn new(compressed_bytes: Vec<u8>) -> InternArchiveParserResult<Self> {
+        let intern = ZipArchive::new(Cursor::new(compressed_bytes))?;
+
+        Ok(Self { intern })
     }
 }
 
-#[derive(Debug)]
-struct RarParser {}
+struct RarParser {
+    archive_path: Utf8PathBuf,
+    all_file_paths: Vec<PathBuf>,
+}
 
 impl ExpandableArchive for RarParser {
     fn get_file_names_and_write_handles(
@@ -150,6 +187,25 @@ impl ExpandableArchive for RarParser {
 
     fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>> {
         todo!()
+    }
+}
+
+impl RarParser {
+    fn new(archive_path: Utf8PathBuf) -> InternArchiveParserResult<Self> {
+        let h = Archive::new(&archive_path).open_for_listing()?;
+
+        let mut all_file_paths = Vec::new();
+        for header_res in h {
+            let header = header_res?;
+            all_file_paths.push(header.filename);
+        }
+
+        let res = RarParser {
+            archive_path,
+            all_file_paths,
+        };
+
+        Ok(res)
     }
 }
 
@@ -193,7 +249,7 @@ enum CompressionType {
 
 #[derive(Debug, Error)]
 #[error("Unknown compressed archive type for extension {0}")]
-struct CompressionTypeFromExtStrErr(String);
+pub struct CompressionTypeFromExtStrErr(String);
 
 impl FromStr for CompressionType {
     type Err = CompressionTypeFromExtStrErr;

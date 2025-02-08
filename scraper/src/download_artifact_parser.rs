@@ -15,6 +15,7 @@ use zip::{ZipArchive, result::ZipError};
 const MAGIC_NUMBER_BYTE_READ_AMOUNT: usize = 100;
 
 pub type VariantParseResult<T> = Result<T, VariantParseError>;
+type ArchiveExpansionResult<T> = Result<T, ArchiveExpansionError>;
 
 #[derive(Debug, Error)]
 pub enum VariantParseError {
@@ -32,6 +33,15 @@ pub enum VariantParseError {
 }
 
 type InternArchiveParserResult<T> = Result<T, InternArchiveParserErr>;
+
+#[derive(Debug, Error)]
+enum ArchiveExpansionError {
+    #[error(transparent)]
+    InternArchiveParseError(#[from] InternArchiveParserErr),
+
+    #[error(transparent)]
+    Io(#[from] io::Error),
+}
 
 #[derive(Debug, Error)]
 pub enum InternArchiveParserErr {
@@ -142,9 +152,7 @@ pub trait ExpandableFile {
 }
 
 pub trait ExpandableArchive {
-    fn get_file_names_and_write_handles(
-        &self,
-    ) -> Box<dyn Iterator<Item = (Utf8PathBuf, Box<dyn ExpandableFile>)>>;
+    fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()>;
     fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>>;
 }
 
@@ -154,9 +162,7 @@ struct ZipParser {
 }
 
 impl ExpandableArchive for ZipParser {
-    fn get_file_names_and_write_handles(
-        &self,
-    ) -> Box<dyn Iterator<Item = (Utf8PathBuf, Box<dyn ExpandableFile>)>> {
+    fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()> {
         todo!()
     }
 
@@ -179,9 +185,7 @@ struct RarParser {
 }
 
 impl ExpandableArchive for RarParser {
-    fn get_file_names_and_write_handles(
-        &self,
-    ) -> Box<dyn Iterator<Item = (Utf8PathBuf, Box<dyn ExpandableFile>)>> {
+    fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()> {
         todo!()
     }
 
@@ -213,9 +217,7 @@ impl RarParser {
 struct SevenZipParser {}
 
 impl ExpandableArchive for SevenZipParser {
-    fn get_file_names_and_write_handles(
-        &self,
-    ) -> Box<dyn Iterator<Item = (Utf8PathBuf, Box<dyn ExpandableFile>)>> {
+    fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()> {
         todo!()
     }
 
@@ -228,9 +230,7 @@ impl ExpandableArchive for SevenZipParser {
 struct TarParser {}
 
 impl ExpandableArchive for TarParser {
-    fn get_file_names_and_write_handles(
-        &self,
-    ) -> Box<dyn Iterator<Item = (Utf8PathBuf, Box<dyn ExpandableFile>)>> {
+    fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()> {
         todo!()
     }
 

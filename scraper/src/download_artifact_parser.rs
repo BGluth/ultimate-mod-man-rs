@@ -29,13 +29,16 @@ pub enum VariantParseError {
     InternArchiveParseError(#[from] InternArchiveParserErr),
 
     #[error(transparent)]
+    ArchiveExpansionError(#[from] ArchiveExpansionError),
+
+    #[error(transparent)]
     Io(#[from] io::Error),
 }
 
 type InternArchiveParserResult<T> = Result<T, InternArchiveParserErr>;
 
 #[derive(Debug, Error)]
-enum ArchiveExpansionError {
+pub enum ArchiveExpansionError {
     #[error(transparent)]
     InternArchiveParseError(#[from] InternArchiveParserErr),
 
@@ -50,6 +53,9 @@ pub enum InternArchiveParserErr {
 
     #[error(transparent)]
     Rar(#[from] UnrarError),
+
+    #[error(transparent)]
+    Sevenz(#[from] sevenz_rust::Error),
 }
 
 pub struct ModPayloadParseInfo {
@@ -67,7 +73,7 @@ impl ModPayloadParseInfo {
         let expandable_archive = Self::open_archive(variant_name, archive_path)?;
 
         let all_archive_file_paths = expandable_archive
-            .get_paths_of_all_files()
+            .get_paths_of_all_files()?
             .collect::<Vec<_>>();
 
         let mod_root_directory_offset = Self::search_for_mod_root(&expandable_archive);
@@ -153,7 +159,9 @@ pub trait ExpandableFile {
 
 pub trait ExpandableArchive {
     fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()>;
-    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>>;
+    fn get_paths_of_all_files(
+        &self,
+    ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf>>>;
 }
 
 #[derive(Debug)]
@@ -166,7 +174,9 @@ impl ExpandableArchive for ZipParser {
         todo!()
     }
 
-    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>> {
+    fn get_paths_of_all_files(
+        &self,
+    ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf>>> {
         todo!()
     }
 }
@@ -189,7 +199,9 @@ impl ExpandableArchive for RarParser {
         todo!()
     }
 
-    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>> {
+    fn get_paths_of_all_files(
+        &self,
+    ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf>>> {
         todo!()
     }
 }
@@ -214,15 +226,25 @@ impl RarParser {
 }
 
 #[derive(Debug)]
-struct SevenZipParser {}
+struct SevenZipParser {
+    path: Utf8PathBuf,
+}
 
 impl ExpandableArchive for SevenZipParser {
     fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()> {
         todo!()
     }
 
-    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>> {
-        todo!()
+    fn get_paths_of_all_files(
+        &self,
+    ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf>>> {
+        let h = sevenz_rust::Archive::open(&self.path).map_err(InternArchiveParserErr::from)?;
+        Ok(Box::new(
+            h.files
+                .into_iter()
+                .filter(|f| !f.is_directory())
+                .map(|f| f.name.into()),
+        ))
     }
 }
 
@@ -234,7 +256,9 @@ impl ExpandableArchive for TarParser {
         todo!()
     }
 
-    fn get_paths_of_all_files(&self) -> Box<dyn Iterator<Item = Utf8PathBuf>> {
+    fn get_paths_of_all_files(
+        &self,
+    ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf>>> {
         todo!()
     }
 }

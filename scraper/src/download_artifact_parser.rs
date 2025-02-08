@@ -1,6 +1,7 @@
 use std::{
     fs::{self, File},
     io::{self, Cursor, Read, Write},
+    ops::Deref,
     path::PathBuf,
     str::FromStr,
 };
@@ -17,6 +18,8 @@ const MAGIC_NUMBER_BYTE_READ_AMOUNT: usize = 100;
 pub type VariantParseResult<T> = Result<T, VariantParseError>;
 type ArchiveExpansionResult<T> = Result<T, ArchiveExpansionError>;
 
+type TarError = io::Error;
+
 #[derive(Debug, Error)]
 pub enum VariantParseError {
     #[error("No magic number was present in the archive {0}")]
@@ -32,7 +35,7 @@ pub enum VariantParseError {
     ArchiveExpansionError(#[from] ArchiveExpansionError),
 
     #[error(transparent)]
-    Io(#[from] io::Error),
+    Io(#[from] TarError),
 }
 
 type InternArchiveParserResult<T> = Result<T, InternArchiveParserErr>;
@@ -56,6 +59,9 @@ pub enum InternArchiveParserErr {
 
     #[error(transparent)]
     Sevenz(#[from] sevenz_rust::Error),
+
+    #[error(transparent)]
+    Tar(#[from] io::Error),
 }
 
 pub struct ModPayloadParseInfo {
@@ -70,7 +76,7 @@ impl ModPayloadParseInfo {
         let variant_name = archive_path.file_name().unwrap();
 
         let archive_h = File::open(archive_path)?;
-        let expandable_archive = Self::open_archive(variant_name, archive_path)?;
+        let mut expandable_archive = Self::open_archive(variant_name, archive_path)?;
 
         let all_archive_file_paths = expandable_archive
             .get_paths_of_all_files()?
@@ -139,8 +145,8 @@ impl ModPayloadParseInfo {
         let h: Box<dyn ExpandableArchive> = match comp_type {
             CompressionType::Zip => Box::new(ZipParser::new(fs::read(archive_path)?)?),
             CompressionType::Rar => Box::new(RarParser::new(archive_path.to_path_buf())?),
-            CompressionType::SevenZip => todo!(),
-            CompressionType::Tar => todo!(),
+            CompressionType::SevenZip => Box::new(SevenZipParser::new(archive_path.to_path_buf())),
+            CompressionType::Tar => Box::new(TarParser::new(archive_path)?),
         };
 
         Ok(h)
@@ -159,9 +165,9 @@ pub trait ExpandableFile {
 
 pub trait ExpandableArchive {
     fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()>;
-    fn get_paths_of_all_files(
-        &self,
-    ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf>>>;
+    fn get_paths_of_all_files<'a>(
+        &'a mut self,
+    ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf> + 'a>>;
 }
 
 #[derive(Debug)]
@@ -175,7 +181,7 @@ impl ExpandableArchive for ZipParser {
     }
 
     fn get_paths_of_all_files(
-        &self,
+        &mut self,
     ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf>>> {
         todo!()
     }
@@ -200,7 +206,7 @@ impl ExpandableArchive for RarParser {
     }
 
     fn get_paths_of_all_files(
-        &self,
+        &mut self,
     ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf>>> {
         todo!()
     }
@@ -230,13 +236,19 @@ struct SevenZipParser {
     path: Utf8PathBuf,
 }
 
+impl SevenZipParser {
+    fn new(path: Utf8PathBuf) -> Self {
+        Self { path }
+    }
+}
+
 impl ExpandableArchive for SevenZipParser {
     fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()> {
         todo!()
     }
 
     fn get_paths_of_all_files(
-        &self,
+        &mut self,
     ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf>>> {
         let h = sevenz_rust::Archive::open(&self.path).map_err(InternArchiveParserErr::from)?;
         Ok(Box::new(
@@ -248,18 +260,30 @@ impl ExpandableArchive for SevenZipParser {
     }
 }
 
-#[derive(Debug)]
-struct TarParser {}
+struct TarParser {
+    intern: tar::Archive<File>,
+}
+
+impl TarParser {
+    fn new(path: &Utf8Path) -> Result<Self, TarError> {
+        let intern = tar::Archive::new(File::open(path)?);
+
+        Ok(Self { intern })
+    }
+}
 
 impl ExpandableArchive for TarParser {
     fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()> {
         todo!()
     }
 
-    fn get_paths_of_all_files(
-        &self,
-    ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf>>> {
-        todo!()
+    fn get_paths_of_all_files<'a>(
+        &'a mut self,
+    ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf> + 'a>> {
+        // Going to do a vec allocation for the sake of maintaining a nicer interface.
+        Ok(Box::new(self.intern.entries()?.collect::<Result<Vec<_>, _>>()?.into_iter()
+            .map(|f| Utf8Path::from_path(f.path().expect("Failed to get the path of a item in a tar file! (Are you running on Windows and unpacking a tar file that is not unicode?")
+            .deref()).unwrap().to_path_buf())))
     }
 }
 

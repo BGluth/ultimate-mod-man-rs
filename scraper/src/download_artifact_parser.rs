@@ -65,9 +65,6 @@ pub enum InternArchiveParserErr {
 }
 
 pub struct ModPayloadParseInfo {
-    /// Some mods (idk why) don't have the "root" mod directory at the very top, so we need to scan before decompression and look for it.
-    mod_root_directory_offset: Option<Utf8PathBuf>,
-
     expandable_archive: Box<dyn ExpandableArchive>,
 }
 
@@ -82,12 +79,7 @@ impl ModPayloadParseInfo {
             .get_paths_of_all_files()?
             .collect::<Vec<_>>();
 
-        let mod_root_directory_offset = Self::search_for_mod_root(&expandable_archive);
-
-        Ok(Self {
-            mod_root_directory_offset,
-            expandable_archive,
-        })
+        Ok(Self { expandable_archive })
     }
 
     fn open_archive(
@@ -152,7 +144,27 @@ impl ModPayloadParseInfo {
         Ok(h)
     }
 
-    fn search_for_mod_root(archive: &Box<dyn ExpandableArchive>) -> Option<Utf8PathBuf> {
+    pub fn expand_archive_to_disk(self, dest_dir: &Utf8Path) -> VariantParseResult<()> {
+        // Some mods (idk why) don't have the "root" mod directory at the very top, so we need to scan before decompression and look for it.
+        let mod_root_directory_offset = self.search_for_mod_root();
+        let root_offset = mod_root_directory_offset.as_ref().map(|x| x.as_path());
+        let f = Box::new(Self::filter_fn);
+
+        self.expandable_archive
+            .expand_archive_to_disk_with_filter_and_offset(dest_dir, root_offset, f)?;
+
+        Ok(())
+    }
+
+    fn filter_fn(p: &Utf8Path) -> bool {
+        todo!()
+    }
+
+    fn remove_root_offset_from_path(p: &Utf8Path, root_offset_p: &Utf8Path) -> Utf8PathBuf {
+        todo!()
+    }
+
+    fn search_for_mod_root(&self) -> Option<Utf8PathBuf> {
         todo!()
     }
 }
@@ -164,7 +176,13 @@ pub trait ExpandableFile {
 }
 
 pub trait ExpandableArchive {
-    fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()>;
+    fn expand_archive_to_disk_with_filter_and_offset(
+        &self,
+        dest_dir: &Utf8Path,
+        root_offset: Option<&Utf8Path>,
+        filter: Box<dyn Fn(&Utf8Path) -> bool>,
+    ) -> ArchiveExpansionResult<()>;
+
     fn get_paths_of_all_files<'a>(
         &'a mut self,
     ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf> + 'a>>;
@@ -176,7 +194,12 @@ struct ZipParser {
 }
 
 impl ExpandableArchive for ZipParser {
-    fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()> {
+    fn expand_archive_to_disk_with_filter_and_offset(
+        &self,
+        dest_dir: &Utf8Path,
+        root_offset: Option<&Utf8Path>,
+        filter: Box<dyn Fn(&Utf8Path) -> bool>,
+    ) -> ArchiveExpansionResult<()> {
         todo!()
     }
 
@@ -201,7 +224,12 @@ struct RarParser {
 }
 
 impl ExpandableArchive for RarParser {
-    fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()> {
+    fn expand_archive_to_disk_with_filter_and_offset(
+        &self,
+        dest_dir: &Utf8Path,
+        root_offset: Option<&Utf8Path>,
+        filter: Box<dyn Fn(&Utf8Path) -> bool>,
+    ) -> ArchiveExpansionResult<()> {
         todo!()
     }
 
@@ -243,7 +271,12 @@ impl SevenZipParser {
 }
 
 impl ExpandableArchive for SevenZipParser {
-    fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()> {
+    fn expand_archive_to_disk_with_filter_and_offset(
+        &self,
+        dest_dir: &Utf8Path,
+        root_offset: Option<&Utf8Path>,
+        filter: Box<dyn Fn(&Utf8Path) -> bool>,
+    ) -> ArchiveExpansionResult<()> {
         todo!()
     }
 
@@ -273,7 +306,12 @@ impl TarParser {
 }
 
 impl ExpandableArchive for TarParser {
-    fn expand_archive_to_disk_with_filter_and_offset(&self) -> ArchiveExpansionResult<()> {
+    fn expand_archive_to_disk_with_filter_and_offset(
+        &self,
+        dest_dir: &Utf8Path,
+        root_offset: Option<&Utf8Path>,
+        filter: Box<dyn Fn(&Utf8Path) -> bool>,
+    ) -> ArchiveExpansionResult<()> {
         todo!()
     }
 

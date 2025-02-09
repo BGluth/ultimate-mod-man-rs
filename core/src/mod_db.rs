@@ -133,21 +133,6 @@ impl ModDb {
         })
     }
 
-    /// It's pretty annoying, but we need to write the compressed archive to disk in some cases (looking at `unrar`) before we can parse it.
-    pub(crate) fn add_compressed_archive(
-        &mut self,
-        key: &VariantAndId,
-        compressed_payload: &[u8],
-    ) -> ModDbResult<Utf8PathBuf> {
-        let mod_dir_path = self.directory_contents.get_path_to_mod(key.id);
-        Self::create_mod_variant_path_if_missing(&mod_dir_path, &key.variant_name)?;
-
-        let mod_artifact_path = mod_dir_path.join(&key.variant_name);
-        fs::write(&mod_artifact_path, compressed_payload)?;
-
-        Ok(mod_artifact_path)
-    }
-
     pub(crate) fn add(
         &mut self,
         key: &VariantAndId,
@@ -155,6 +140,11 @@ impl ModDb {
     ) -> ModDbResult<()> {
         let mod_dir_path = self.directory_contents.get_path_to_mod(key.id);
         Self::create_mod_variant_path_if_missing(&mod_dir_path, &key.variant_name)?;
+        self.add_compressed_archive(
+            &mod_dir_path,
+            &key.variant_name,
+            &payload.variant_download_artifact,
+        )?;
 
         let mod_info_path = mod_dir_path.join(MOD_INFO_FILE_NAME);
 
@@ -167,6 +157,19 @@ impl ModDb {
         mod_info.add_variant(key.variant_name.clone());
 
         Ok(())
+    }
+
+    /// It's pretty annoying, but we need to write the compressed archive to disk in some cases (looking at `unrar`) before we can parse it.
+    fn add_compressed_archive(
+        &mut self,
+        mod_dir_path: &Utf8Path,
+        variant_name: &str,
+        compressed_payload: &[u8],
+    ) -> ModDbResult<Utf8PathBuf> {
+        let mod_artifact_path = mod_dir_path.join(variant_name);
+        fs::write(&mod_artifact_path, compressed_payload)?;
+
+        Ok(mod_artifact_path)
     }
 
     fn create_mod_variant_path_if_missing(

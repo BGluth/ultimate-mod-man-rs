@@ -31,7 +31,8 @@ use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ultimate_mod_man_rs_scraper::{
-    banana_scraper::ScrapedBananaModData, download_artifact_parser::SkinSlot,
+    banana_scraper::ScrapedBananaModData,
+    download_artifact_parser::{ModPayloadParseInfo, SkinSlot, VariantParseError},
 };
 use ultimate_mod_man_rs_utils::types::{ModId, VariantAndId};
 
@@ -43,10 +44,14 @@ pub enum ModDbError {
     IoError(#[from] io::Error),
 
     #[error(transparent)]
+    VariantParseError(#[from] VariantParseError),
+
+    #[error(transparent)]
     DeserializationError(#[from] toml::de::Error),
 }
 
 static MOD_INFO_FILE_NAME: &str = "mod_info.toml";
+static EXPANDED_MOD_INFO_DIR_NAME: &str = "expanded";
 static DOWNLOAD_CACHE_UNPACKED_DATA_DIR: &str = "data";
 static DB_LOCKFILE_NAME: &str = ".lockfile";
 
@@ -114,6 +119,7 @@ impl ModDb {
                 warn!(
                     "Found something other than a directory in the mod manager state directory at \"{p:?}\" ({unexpected_entry_name:?})"
                 );
+
                 continue;
             }
 
@@ -139,8 +145,11 @@ impl ModDb {
         payload: ScrapedBananaModData,
     ) -> ModDbResult<()> {
         let mod_dir_path = self.directory_contents.get_path_to_mod(key.id);
-        Self::create_mod_variant_path_if_missing(&mod_dir_path, &key.variant_name)?;
-        self.add_compressed_archive(
+        let mod_variant_path = mod_dir_path.join(&key.variant_name);
+
+        fs::create_dir(&mod_variant_path)?;
+
+        let compressed_path = self.add_compressed_archive(
             &mod_dir_path,
             &key.variant_name,
             &payload.variant_download_artifact,
@@ -156,6 +165,12 @@ impl ModDb {
 
         mod_info.add_variant(key.variant_name.clone());
 
+        let expanded_mod_dir_path = mod_variant_path.join(EXPANDED_MOD_INFO_DIR_NAME);
+        fs::create_dir(&expanded_mod_dir_path)?;
+
+        let parse_info = ModPayloadParseInfo::new(&compressed_path)?;
+        parse_info.expand_archive_to_disk(&expanded_mod_dir_path)?;
+
         Ok(())
     }
 
@@ -170,16 +185,6 @@ impl ModDb {
         fs::write(&mod_artifact_path, compressed_payload)?;
 
         Ok(mod_artifact_path)
-    }
-
-    fn create_mod_variant_path_if_missing(
-        mod_dir_path: &Utf8Path,
-        variant_name: &str,
-    ) -> ModDbResult<()> {
-        let mod_variant_path = mod_dir_path.join(variant_name);
-        fs::create_dir(mod_variant_path)?;
-
-        Ok(())
     }
 
     pub(crate) fn get(&self, key: &VariantAndId) -> Option<&InstalledModInfo> {

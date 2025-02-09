@@ -12,7 +12,7 @@ use ultimate_mod_man_rs_utils::{
 
 use crate::{
     cmds::status::StatusCmdInfo,
-    mod_db::{LoadPersistedStateErr, ModDb},
+    mod_db::{LoadPersistedStateErr, ModDb, ModDbError},
     mod_name_resolver::{BananaModNameResolver, ModNameResolverError},
 };
 
@@ -22,6 +22,9 @@ pub type ModManagerResult<T> = Result<T, ModManagerErr>;
 pub enum ModManagerErr {
     #[error(transparent)]
     LoadPersistedStateErr(#[from] LoadPersistedStateErr),
+
+    #[error(transparent)]
+    ModDbError(#[from] ModDbError),
 
     #[error(transparent)]
     BananaScraperError(#[from] BananaScraperError),
@@ -76,10 +79,10 @@ impl<U: UserInputDelegate> ModManager<U> {
                 .download_mod_variant(&mut self.user_input_delegate, &id_and_variant)
                 .await?;
 
-            self.db.add(&id_and_variant, downloaded_mod_variant);
+            self.db.add(&id_and_variant, downloaded_mod_variant)?;
         }
 
-        todo!()
+        Ok(())
     }
 
     pub fn delete_mods<I: IntoIterator<Item = ModIdentifier>>(

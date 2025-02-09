@@ -1,4 +1,4 @@
 [workspace]
-members = ["cli", "core"]
+members = ["cli", "core", "scraper", "utils"]
 author = "bgluth"
 resolver = "2"

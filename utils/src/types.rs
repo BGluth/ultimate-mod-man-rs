@@ -5,6 +5,7 @@ use std::{
 };
 
 use derive_builder::Builder;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub type ModId = u64;
@@ -74,7 +75,7 @@ pub enum VariantAndIdentifierStrError {
     MissingVariant(String),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct VariantAndId {
     pub id: ModId,
     pub variant_name: String,

@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use camino::Utf8Path;
 use log::info;
 use thiserror::Error;
@@ -12,7 +14,8 @@ use ultimate_mod_man_rs_utils::{
 
 use crate::{
     cmds::status::StatusCmdInfo,
-    mod_db::{LoadPersistedStateErr, ModDb, ModDbError},
+    in_prog_action::{Action, InProgAction},
+    mod_db::{ModDb, ModDbError},
     mod_name_resolver::{BananaModNameResolver, ModNameResolverError},
 };
 
@@ -20,9 +23,6 @@ pub type ModManagerResult<T> = Result<T, ModManagerErr>;
 
 #[derive(Debug, Error)]
 pub enum ModManagerErr {
-    #[error(transparent)]
-    LoadPersistedStateErr(#[from] LoadPersistedStateErr),
-
     #[error(transparent)]
     ModDbError(#[from] ModDbError),
 
@@ -59,13 +59,18 @@ impl<U: UserInputDelegate> ModManager<U> {
         &mut self,
         idents: I,
     ) -> ModManagerResult<()> {
+        self.cleanup_any_incomplete_in_prog_action()?;
+
         for ident_and_variant in idents {
-            let id_and_variant = self
+            let key = self
                 .mod_resolution_cache
                 .resolve_key(ident_and_variant.clone(), &self.scraper)
                 .await?;
 
-            if self.db.exists(&id_and_variant) {
+            self.db
+                .journal_action_as_in_prog(Action::Add(key.clone()))?;
+
+            if self.db.exists(&key) {
                 info!(
                     "Skipping adding the mod variant {} since it was already installed. (If you want to check for mod updates, run the update command.)",
                     ident_and_variant
@@ -76,10 +81,12 @@ impl<U: UserInputDelegate> ModManager<U> {
             // Mod is not installed.
             let downloaded_mod_variant = self
                 .scraper
-                .download_mod_variant(&mut self.user_input_delegate, &id_and_variant)
+                .download_mod_variant(&mut self.user_input_delegate, &key)
                 .await?;
 
-            self.db.add(&id_and_variant, downloaded_mod_variant)?;
+            self.db.add(&key, downloaded_mod_variant)?;
+
+            self.db.remove_in_prog_action()?;
         }
 
         Ok(())
@@ -122,5 +129,29 @@ impl<U: UserInputDelegate> ModManager<U> {
 
     pub fn switch_compare(&self) -> ModManagerResult<()> {
         todo!()
+    }
+
+    fn cleanup_any_incomplete_in_prog_action(&mut self) -> ModManagerResult<()> {
+        if let Some(in_prog_act) = self.db.get_in_prog_action_if_any()? {
+            self.remove_state_of_incomplete_in_prog_action(in_prog_act)?;
+        }
+
+        Ok(())
+    }
+
+    fn remove_state_of_incomplete_in_prog_action(
+        &mut self,
+        action: InProgAction,
+    ) -> ModManagerResult<()> {
+        match action.deref() {
+            Action::Add(key) => {
+                self.db.remove_variant(key)?;
+            }
+        }
+
+        // We finished cleaning up the in progress action, so now we can remove it from disk.
+        self.db.remove_in_prog_action()?;
+
+        Ok(())
     }
 }

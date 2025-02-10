@@ -34,43 +34,38 @@ use ultimate_mod_man_rs_scraper::{
     banana_scraper::ScrapedBananaModData,
     download_artifact_parser::{ModPayloadParseInfo, SkinSlot, VariantParseError},
 };
-use ultimate_mod_man_rs_utils::types::{ModId, VariantAndId};
+use ultimate_mod_man_rs_utils::{
+    types::{ModId, VariantAndId},
+    utils::{DeserializationError, deserialize_data_from_path},
+};
+
+use crate::in_prog_action::{Action, InProgAction, InProgActionError};
 
 pub type ModDbResult<T> = Result<T, ModDbError>;
 
 #[derive(Debug, Error)]
 pub enum ModDbError {
     #[error(transparent)]
-    IoError(#[from] io::Error),
-
-    #[error(transparent)]
     VariantParseError(#[from] VariantParseError),
 
     #[error(transparent)]
-    DeserializationError(#[from] toml::de::Error),
-}
-
-static MOD_INFO_FILE_NAME: &str = "mod_info.toml";
-static EXPANDED_MOD_INFO_DIR_NAME: &str = "expanded";
-static DOWNLOAD_CACHE_UNPACKED_DATA_DIR: &str = "data";
-static DB_LOCKFILE_NAME: &str = ".lockfile";
-
-pub type LoadPersistedStateResult<T> = Result<T, LoadPersistedStateErr>;
-
-#[derive(Debug, Error)]
-pub enum LoadPersistedStateErr {
-    #[error("No cache entry info for mod {0}")]
-    MissingModCacheInfoEntry(String),
+    DeserializationError(#[from] DeserializationError),
 
     #[error(transparent)]
     LockFileError(#[from] DBLockFileError),
 
     #[error(transparent)]
-    IoError(#[from] io::Error),
+    InProgActionError(#[from] InProgActionError),
 
     #[error(transparent)]
-    DeserializationError(#[from] toml::de::Error),
+    IoError(#[from] io::Error),
 }
+
+static MOD_INFO_FILE_NAME: &str = "mod_info.toml";
+static EXPANDED_MOD_INFO_DIR_NAME: &str = "expanded";
+static DOWNLOAD_CACHE_UNPACKED_DATA_DIR: &str = "data";
+static IN_PROG_ACTION_FILE_NAME: &str = "in_prog_action.toml";
+static DB_LOCKFILE_NAME: &str = ".lockfile";
 
 type DBLockFileResult<T> = Result<T, DBLockFileError>;
 
@@ -92,6 +87,7 @@ impl DBLockFile {
 
 #[derive(Debug)]
 pub(crate) struct ModDb {
+    // persisted_state:
     directory_contents: ModDbDirectory,
 
     /// We hold the lock-file until the InstalledModInfoentire program exits.
@@ -99,7 +95,7 @@ pub(crate) struct ModDb {
 }
 
 impl ModDb {
-    pub(crate) fn load_from_path(p: &Utf8Path) -> LoadPersistedStateResult<Self> {
+    pub(crate) fn load_from_path(p: &Utf8Path) -> ModDbResult<Self> {
         if !p.exists() {
             info!("Data directory does not exist at \"{p:?}\". Creating...");
             create_dir_all(p)?;
@@ -139,6 +135,30 @@ impl ModDb {
         })
     }
 
+    pub(crate) fn journal_action_as_in_prog(&self, action: Action) -> ModDbResult<()> {
+        let in_prog_action_file_path = self.directory_contents.get_in_prog_action_path();
+        assert!(!fs::exists(&in_prog_action_file_path)?);
+
+        let in_prog = InProgAction::new(action);
+        in_prog.sync_to_disk(&in_prog_action_file_path)?;
+
+        Ok(())
+    }
+
+    pub(crate) fn get_in_prog_action_if_any(&self) -> ModDbResult<Option<InProgAction>> {
+        let in_prog_action_file_path = self.directory_contents.get_in_prog_action_path();
+        let res = InProgAction::load_from_disk_if_present(&in_prog_action_file_path)?;
+
+        Ok(res)
+    }
+
+    pub(crate) fn remove_in_prog_action(&self) -> ModDbResult<()> {
+        let in_prog_action_file_path = self.directory_contents.get_in_prog_action_path();
+        fs::remove_file(in_prog_action_file_path)?;
+
+        Ok(())
+    }
+
     pub(crate) fn add(
         &mut self,
         key: &VariantAndId,
@@ -160,7 +180,7 @@ impl ModDb {
         // Load mod info from disk.
         let mut mod_info: InstalledModInfo = match fs::exists(mod_info_path)? {
             false => InstalledModInfo::new(key.id, payload.mod_name, payload.version),
-            true => toml::from_str(&fs::read_to_string(mod_dir_path.join(MOD_INFO_FILE_NAME))?)?,
+            true => deserialize_data_from_path(&mod_dir_path.join(MOD_INFO_FILE_NAME))?,
         };
 
         mod_info.add_variant(key.variant_name.clone());
@@ -199,7 +219,10 @@ impl ModDb {
         todo!()
     }
 
-    pub(crate) fn remove(&mut self, key: &VariantAndId) -> Option<InstalledVariant> {
+    pub(crate) fn remove_variant(
+        &mut self,
+        key: &VariantAndId,
+    ) -> ModDbResult<Option<InstalledVariant>> {
         todo!()
     }
 
@@ -209,6 +232,16 @@ impl ModDb {
 
     pub(crate) fn installed_mods(&self) -> impl Iterator<Item = &InstalledModInfo> {
         self.directory_contents.entries.values()
+    }
+
+    /// Like `remove_variant` except it expects that things may be randomly missing.
+    pub(crate) fn cleanup_traces_of_variant(&mut self, key: &VariantAndId) -> ModDbResult<()> {
+        todo!()
+    }
+
+    /// Like `remove_mod` except it expects that things may be randomly missing.
+    pub(crate) fn cleanup_traces_of_mod(&mut self, key: &ModId) -> ModDbResult<()> {
+        todo!()
     }
 }
 
@@ -231,6 +264,10 @@ impl ModDbDirectory {
 
     fn get_mod_name_expected(&self, id: ModId) -> &str {
         self.entries.get(&id).expect("Missing mod entry when constructing path to it's directory! This should never happen!").name.as_str()
+    }
+
+    fn get_in_prog_action_path(&self) -> Utf8PathBuf {
+        self.dir_path.join(IN_PROG_ACTION_FILE_NAME)
     }
 }
 
@@ -274,10 +311,8 @@ impl InstalledModInfo {
 }
 
 impl InstalledModInfo {
-    fn read_installed_mod_contents_dir(
-        installed_mod_path: &Utf8Path,
-    ) -> LoadPersistedStateResult<Option<Self>> {
-        let mod_info_path = installed_mod_path.join(MOD_INFO_FILE_NAME);
+    fn read_installed_mod_contents_dir(installed_mod_path: &Utf8Path) -> ModDbResult<Option<Self>> {
+        let mod_info_path: Utf8PathBuf = installed_mod_path.join(MOD_INFO_FILE_NAME);
 
         // To keep things simple (at least for now), we're going to assume that the directory structure inside each installed mod directory is always valid. If it's not, we are just going to warn the user at a minimum since validation is going to add a lot of complexity and should only happen if the user does manual intervention.
         if !mod_info_path.exists() {
@@ -290,7 +325,7 @@ impl InstalledModInfo {
             return Ok(None);
         }
 
-        let mod_info: InstalledModInfo = toml::from_str(&fs::read_to_string(&mod_info_path)?)?;
+        let mod_info: InstalledModInfo = deserialize_data_from_path(&mod_info_path)?;
 
         // Quick simple verification check for the installed mod variants.
         for installed_variant in mod_info.installed_variants.iter() {

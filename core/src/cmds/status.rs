@@ -1,7 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
 use ptree::TreeBuilder;
-use ultimate_mod_man_rs_utils::types::ModIdentifier;
+use ultimate_mod_man_rs_utils::types::VariantAndIdentifier;
 
 use crate::mod_db::ModDb;
 
@@ -20,7 +20,7 @@ struct VariantNameAndEnabled {
 #[derive(Debug)]
 pub enum StatusCmdInfo {
     Generic,
-    Specific(Vec<ModIdentifier>),
+    Specific(Vec<VariantAndIdentifier>),
 }
 
 pub(crate) fn cmd_status(args: &StatusCmdInfo, db: &ModDb) {

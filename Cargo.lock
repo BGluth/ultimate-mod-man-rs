@@ -2757,6 +2757,7 @@ dependencies = [
  "clap",
  "dirs",
  "log",
+ "tokio",
  "ultimate-mod-man-rs-core",
  "ultimate-mod-man-rs-utils",
 ]

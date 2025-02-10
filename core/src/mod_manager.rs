@@ -42,11 +42,11 @@ pub struct ModManager<U: UserInputDelegate> {
 }
 
 impl<U: UserInputDelegate> ModManager<U> {
-    pub fn new(mod_db_path: &Utf8Path, user_input_delegate: U) -> ModManagerResult<Self> {
+    pub fn new(cache_dir_path: &Utf8Path, user_input_delegate: U) -> ModManagerResult<Self> {
         Ok(Self {
-            db: ModDb::load_from_path(mod_db_path)?,
+            db: ModDb::load_from_path(cache_dir_path)?,
             scraper: BananaClient::new()?,
-            mod_resolution_cache: BananaModNameResolver::new(mod_db_path)?,
+            mod_resolution_cache: BananaModNameResolver::new(cache_dir_path)?,
             user_input_delegate,
         })
     }

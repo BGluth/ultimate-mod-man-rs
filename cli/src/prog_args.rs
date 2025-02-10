@@ -3,7 +3,7 @@ use std::env::current_dir;
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand};
 use log::warn;
-use ultimate_mod_man_rs_utils::types::ModIdentifier;
+use ultimate_mod_man_rs_utils::types::VariantAndIdentifier;
 
 /// Tool for managing mods for SSBU.
 ///
@@ -90,7 +90,7 @@ pub(crate) struct ModIdentifiersList {
     /// - The ID on GameBanana
     /// - The name of the mod on GameBanana.
     #[clap(verbatim_doc_comment)]
-    pub(crate) mods: Vec<ModIdentifier>,
+    pub(crate) mods: Vec<VariantAndIdentifier>,
 }
 
 fn get_os_default_state_dir_path() -> Utf8PathBuf {

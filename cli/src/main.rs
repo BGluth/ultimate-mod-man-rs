@@ -6,15 +6,16 @@ use ultimate_mod_man_rs_core::{cmds::status::StatusCmdInfo, mod_manager::ModMana
 mod cli_user_input_delegate;
 mod prog_args;
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let p_args = ProgArgs::parse();
     let user_input_delegate = CliUserInputDelegate::new();
 
-    let mm = ModManager::new(&p_args.state_dir_path, user_input_delegate)?;
+    let mut mm = ModManager::new(&p_args.state_dir_path, user_input_delegate)?;
 
     match p_args.command {
         prog_args::Command::Status(status_args) => mm.status(status_args.into())?,
-        prog_args::Command::Add(add_args) => todo!(),
+        prog_args::Command::Add(add_args) => mm.add_mods(add_args.mods.mods).await?,
         prog_args::Command::Delete => todo!(),
         prog_args::Command::CheckForUpdates => todo!(),
         prog_args::Command::SyncWithSwitch => todo!(),

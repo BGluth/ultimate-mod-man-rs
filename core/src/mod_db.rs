@@ -216,7 +216,7 @@ impl ModDb {
     }
 
     pub(crate) fn exists(&self, key: &VariantAndId) -> bool {
-        todo!()
+        self.directory_contents.entries.contains_key(&key.id)
     }
 
     pub(crate) fn remove_variant(

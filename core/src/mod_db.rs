@@ -32,7 +32,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ultimate_mod_man_rs_scraper::{
     banana_scraper::ScrapedBananaModData,
-    download_artifact_parser::{ModPayloadParseInfo, SkinSlot, VariantParseError},
+    download_artifact_parser::{ModPayloadParseInfo, VariantParseError},
+    mod_file_classifier::SkinSlotValue,
 };
 use ultimate_mod_man_rs_utils::{
     types::{ModId, VariantAndId},
@@ -345,7 +346,7 @@ impl InstalledModInfo {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct CharacterSlotsAndOverrides {
-    char_and_default_slots: SkinSlot,
+    char_and_default_slots: SkinSlotValue,
 
     /// In order to avoid conflicts (or if the user just wants a different slot), we can override the original slot to something else.
     slot_overrides: Vec<SlotOverride>,
@@ -353,8 +354,8 @@ pub(crate) struct CharacterSlotsAndOverrides {
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 struct SlotOverride {
-    old: SkinSlot,
-    new: SkinSlot,
+    old: SkinSlotValue,
+    new: SkinSlotValue,
 }
 
 /// Info that we can use to detect version changes.

@@ -5,7 +5,7 @@ use log::info;
 use thiserror::Error;
 use ultimate_mod_man_rs_scraper::{
     banana_scraper::{BananaClient, BananaScraperError},
-    download_artifact_parser::SkinSlot,
+    mod_file_classifier::SkinSlotValue,
 };
 use ultimate_mod_man_rs_utils::{
     types::{ModIdentifier, VariantAndIdentifier},
@@ -121,8 +121,8 @@ impl<U: UserInputDelegate> ModManager<U> {
     pub fn change_slot(
         &mut self,
         k: VariantAndIdentifier,
-        s1: SkinSlot,
-        s2: SkinSlot,
+        s1: SkinSlotValue,
+        s2: SkinSlotValue,
     ) -> ModManagerResult<()> {
         todo!()
     }

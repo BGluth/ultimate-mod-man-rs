@@ -24,7 +24,7 @@ enum ModType {
 
 /// What "asset" the mod file is associated with (eg. skin slot 02).
 #[derive(Clone, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
-enum ModFileAssetAssociation {
+pub enum ModFileAssetAssociation {
     CharSkinSlot(CharSkinSlotValue),
     Stage(StageSlotValue),
 

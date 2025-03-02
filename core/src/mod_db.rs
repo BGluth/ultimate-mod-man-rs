@@ -33,7 +33,7 @@ use thiserror::Error;
 use ultimate_mod_man_rs_scraper::{
     banana_scraper::ScrapedBananaModData,
     download_artifact_parser::{ModPayloadParseInfo, VariantParseError},
-    mod_file_classifier::{CharSkinSlotValue, ModFileInfo, SkinSlotIdx},
+    mod_file_classifier::{CharSkinSlotValue, ModFileAssetAssociation, ModFileInfo, SkinSlotIdx},
 };
 use ultimate_mod_man_rs_utils::{
     types::{ModId, VariantAndId},
@@ -91,7 +91,9 @@ pub(crate) struct ModDb {
     // persisted_state:
     directory_contents: ModDbDirectory,
 
-    /// We hold the lock-file until the InstalledModInfoentire program exits.
+    mod_file_associations: EnabledModFileAssociations,
+
+    /// We hold the lock-file until the entire program exits.
     _lock_file: DBLockFile,
 }
 
@@ -102,6 +104,7 @@ impl ModDb {
             create_dir_all(p)?;
         }
 
+        let mut mod_file_associations = EnabledModFileAssociations::new();
         let mut installed_mods = HashMap::new();
 
         // TODO: If there is a clean cross-platform way to access a in memory directory (eg. `/tmp` on Linux), place the lockfile there instead.
@@ -120,9 +123,14 @@ impl ModDb {
                 continue;
             }
 
+            // We are assuming that any serialized enabled mods do not conflict with each other, since we should only serialize mods that have no conflicts. This will panic if that's not the case.
             if let Some(installed_mod) =
                 InstalledModInfo::read_installed_mod_contents_dir(installed_mod_dir.path())?
             {
+                for var_info in installed_mod.installed_variants.values() {
+                    mod_file_associations.add_mod_info_to_global_lookup(&var_info.file_info);
+                }
+
                 installed_mods.insert(installed_mod.id, installed_mod);
             }
         }
@@ -132,6 +140,7 @@ impl ModDb {
                 dir_path: p.into(),
                 entries: installed_mods,
             },
+            mod_file_associations,
             _lock_file,
         })
     }
@@ -388,6 +397,7 @@ struct ModVariantVersioningInfo {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct InstalledVariant {
+    // TODO: Duplicate data now that these entries are keyed with this in a `HashMap`?
     /// The installed variant name is just the file name on GameBanana.   
     pub(crate) name: String,
 
@@ -409,5 +419,28 @@ impl InstalledVariant {
             slots_and_overrides: todo!(),
             enabled: true,
         }
+    }
+}
+
+#[derive(Debug)]
+struct EnabledModFileAssociations {
+    association_lookup: HashMap<ModFileAssetAssociation, ModId>,
+}
+
+impl EnabledModFileAssociations {
+    fn new() -> Self {
+        todo!()
+    }
+
+    /// Will panic if another mod is already associated with an asset.
+    fn add_mod_info_to_global_lookup(&mut self, m_info: &ModFileInfo) {
+        todo!()
+    }
+
+    fn get_any_mod_associated_with_asset(
+        &self,
+        assoc_type: &ModFileAssetAssociation,
+    ) -> Option<ModId> {
+        todo!()
     }
 }

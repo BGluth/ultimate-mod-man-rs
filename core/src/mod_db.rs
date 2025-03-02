@@ -33,7 +33,7 @@ use thiserror::Error;
 use ultimate_mod_man_rs_scraper::{
     banana_scraper::ScrapedBananaModData,
     download_artifact_parser::{ModPayloadParseInfo, VariantParseError},
-    mod_file_classifier::SkinSlotValue,
+    mod_file_classifier::{CharSkinSlotValue, ModFileInfo, SkinSlotIdx},
 };
 use ultimate_mod_man_rs_utils::{
     types::{ModId, VariantAndId},
@@ -166,9 +166,6 @@ impl ModDb {
         payload: ScrapedBananaModData,
     ) -> ModDbResult<()> {
         let mod_dir_path = self.directory_contents.get_path_to_mod(key.id);
-        let mod_variant_path = mod_dir_path.join(&key.variant_name);
-
-        fs::create_dir(&mod_variant_path)?;
 
         let compressed_path = self.add_compressed_archive(
             &mod_dir_path,
@@ -184,13 +181,7 @@ impl ModDb {
             true => deserialize_data_from_path(&mod_dir_path.join(MOD_INFO_FILE_NAME))?,
         };
 
-        mod_info.add_variant(key.variant_name.clone());
-
-        let expanded_mod_dir_path = mod_variant_path.join(EXPANDED_MOD_INFO_DIR_NAME);
-        fs::create_dir(&expanded_mod_dir_path)?;
-
-        let parse_info = ModPayloadParseInfo::new(&compressed_path)?;
-        parse_info.expand_archive_to_disk(&expanded_mod_dir_path)?;
+        mod_info.add_variant(key.variant_name.clone(), mod_dir_path, compressed_path)?;
 
         Ok(())
     }
@@ -290,8 +281,9 @@ pub(crate) struct InstalledModInfo {
     pub name: String,
 
     /// Because there can be different variants available to download for a given mod, we need to also be able to specify which one we are using.
-    pub installed_variants: Vec<InstalledVariant>,
+    pub installed_variants: HashMap<String, InstalledVariant>,
 
+    // TODO: Determine if the mod itself or the variant should hold the version info...
     /// The version that we have in the mod manager.
     pub version: Option<String>,
 }
@@ -301,13 +293,32 @@ impl InstalledModInfo {
         Self {
             id,
             name,
-            installed_variants: Vec::default(),
+            installed_variants: HashMap::default(),
             version,
         }
     }
 
-    fn add_variant(&mut self, name: String) {
-        todo!()
+    fn add_variant(
+        &mut self,
+        var_name: String,
+        mod_dir_path: Utf8PathBuf,
+        compressed_path: Utf8PathBuf,
+    ) -> ModDbResult<()> {
+        let mod_variant_path = mod_dir_path.join(&var_name);
+        fs::create_dir(&mod_variant_path)?;
+
+        let expanded_mod_dir_path = mod_variant_path.join(EXPANDED_MOD_INFO_DIR_NAME);
+        fs::create_dir(&expanded_mod_dir_path)?;
+
+        let parse_info = ModPayloadParseInfo::new(&compressed_path)?;
+        parse_info.expand_archive_to_disk(&expanded_mod_dir_path)?;
+
+        let variant_file_info = ModFileInfo::from_uncompressed_path(&expanded_mod_dir_path);
+
+        let installed_var = InstalledVariant::new(var_name.clone(), variant_file_info);
+        self.installed_variants.insert(var_name, installed_var);
+
+        Ok(())
     }
 }
 
@@ -329,8 +340,8 @@ impl InstalledModInfo {
         let mod_info: InstalledModInfo = deserialize_data_from_path(&mod_info_path)?;
 
         // Quick simple verification check for the installed mod variants.
-        for installed_variant in mod_info.installed_variants.iter() {
-            let mod_variant_dir_path = mod_info_path.join(&installed_variant.name);
+        for installed_variant_name in mod_info.installed_variants.keys() {
+            let mod_variant_dir_path = mod_info_path.join(installed_variant_name);
 
             if !mod_variant_dir_path.exists() {
                 warn!(
@@ -346,16 +357,25 @@ impl InstalledModInfo {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct CharacterSlotsAndOverrides {
-    char_and_default_slots: SkinSlotValue,
+    char_and_default_slots: CharSkinSlotValue,
 
     /// In order to avoid conflicts (or if the user just wants a different slot), we can override the original slot to something else.
     slot_overrides: Vec<SlotOverride>,
 }
 
+impl CharacterSlotsAndOverrides {
+    fn new(char_and_default_slots: CharSkinSlotValue) -> Self {
+        Self {
+            char_and_default_slots,
+            slot_overrides: Vec::default(),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 struct SlotOverride {
-    old: SkinSlotValue,
-    new: SkinSlotValue,
+    old: SkinSlotIdx,
+    new: SkinSlotIdx,
 }
 
 /// Info that we can use to detect version changes.
@@ -371,6 +391,9 @@ pub struct InstalledVariant {
     /// The installed variant name is just the file name on GameBanana.   
     pub(crate) name: String,
 
+    /// Metadata describing the file associations between files and mod assets.
+    pub file_info: ModFileInfo,
+
     /// Slots used by the skin variant and any overrides.
     pub(crate) slots_and_overrides: CharacterSlotsAndOverrides,
 
@@ -379,11 +402,12 @@ pub struct InstalledVariant {
 }
 
 impl InstalledVariant {
-    fn new(name: String) -> Self {
+    fn new(name: String, file_info: ModFileInfo) -> Self {
         Self {
             name,
+            file_info,
             slots_and_overrides: todo!(),
-            enabled: todo!(),
+            enabled: true,
         }
     }
 }

@@ -12,7 +12,7 @@ use thiserror::Error;
 use unrar::{Archive, error::UnrarError};
 use zip::{ZipArchive, result::ZipError};
 
-use crate::mod_file_classifier::SkinSlotValue;
+use crate::mod_file_classifier::CharSkinSlotValue;
 
 const MAGIC_NUMBER_BYTE_READ_AMOUNT: usize = 100;
 
@@ -362,5 +362,5 @@ pub(crate) struct CharacterSlot {
     char_name: String,
 
     /// The slots specified by the mod.
-    mod_default_slots: Vec<SkinSlotValue>,
+    mod_default_slots: Vec<CharSkinSlotValue>,
 }

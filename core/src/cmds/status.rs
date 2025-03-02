@@ -67,7 +67,7 @@ impl GenericModStats {
             generic_stats.scalars.num_mods_installed += 1;
 
             let mut variants = Vec::new();
-            for variant in mod_entry.installed_variants.iter() {
+            for variant in mod_entry.installed_variants.values() {
                 generic_stats.scalars.num_mods_installed += 1;
 
                 if variant.enabled {

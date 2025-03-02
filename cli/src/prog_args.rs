@@ -24,7 +24,8 @@ pub(crate) struct ProgArgs {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
-    /// Get the status of all installed mods or information on one or more specific mods. Do not specify any mods to get generic stats.
+    /// Get the status of all installed mods or information on one or more
+    /// specific mods. Do not specify any mods to get generic stats.
     Status(StatusCliArgs),
 
     /// Add new mods to the manager.
@@ -36,7 +37,8 @@ pub(crate) enum Command {
     /// Check if updates are available for any added mods.
     CheckForUpdates,
 
-    /// Update the mods installed on a Switch with the mods that added to the manager.
+    /// Update the mods installed on a Switch with the mods that added to the
+    /// manager.
     SyncWithSwitch,
 
     /// Enable or disable a given set of mods.
@@ -81,7 +83,8 @@ pub(crate) struct EnableDisableArgs {
     pub(crate) enable: bool,
 }
 
-/// Struct is purely just to wrap the Clippy docs in order to avoid duplicating them.
+/// Struct is purely just to wrap the Clippy docs in order to avoid duplicating
+/// them.
 #[derive(Args, Clone, Debug)]
 pub(crate) struct ModIdentifiersList {
     /// A list of mods to work with.
@@ -94,15 +97,18 @@ pub(crate) struct ModIdentifiersList {
 }
 
 fn get_os_default_state_dir_path() -> Utf8PathBuf {
-    // TODO: Unwrap for now. Not sure how to handle `Result`s in default Clap args...
+    // TODO: Unwrap for now. Not sure how to handle `Result`s in default Clap
+    // args...
     let res = match dirs::cache_dir() {
         Some(p) => p,
         None => {
             warn!(
-                "Unable to find a config directory for this OS! Using the current directory instead as a fallback, but this should be considered a bug and be reported to the maintainers."
+                "Unable to find a config directory for this OS! Using the current directory \
+                 instead as a fallback, but this should be considered a bug and be reported to \
+                 the maintainers."
             );
             current_dir().unwrap()
-        }
+        },
     };
 
     Utf8PathBuf::from_path_buf(res).unwrap()

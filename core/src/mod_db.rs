@@ -1,7 +1,8 @@
-//! Mod manager state that is persisted between run. This includes downloaded mods, slot overrides, etc.
+//! Mod manager state that is persisted between run. This includes downloaded
+//! mods, slot overrides, etc.
 //!
-//! The persisted mod manager state is stored in a directory where each mod gets it's own subdirectory. Each mod subdirectory looks like this:
-//! mod_info.toml
+//! The persisted mod manager state is stored in a directory where each mod gets
+//! it's own subdirectory. Each mod subdirectory looks like this: mod_info.toml
 //! mod_download_link_1_v_x_y_z (dir)
 //!     \_ file_1, file_2, etc.
 //! mod_download_link_2_v_x_y_z (dir)
@@ -10,13 +11,17 @@
 //!
 //! The idea is:
 //! - Each mod on GameBanana has it's own unique ID and name.
-//! - Each mod can have one or more download links for different variants of the mod.
-//! - Each mod variant has it's own version (in most cases will likely be variant publish date).
+//! - Each mod can have one or more download links for different variants of the
+//!   mod.
+//! - Each mod variant has it's own version (in most cases will likely be
+//!   variant publish date).
 //! - Any mod can have 1..* variants installed.
 //! - Each mod variant can be enabled or disabled.
-//! - A lock file is acquired before doing ANY reads/writes on the root mod directory.
+//! - A lock file is acquired before doing ANY reads/writes on the root mod
+//!   directory.
 //!
-//! So on startup, the entire mod directory is read in and the installed mod structure is constructed.
+//! So on startup, the entire mod directory is read in and the installed mod
+//! structure is constructed.
 
 use std::{
     collections::HashMap,
@@ -75,7 +80,8 @@ type DBLockFileResult<T> = Result<T, DBLockFileError>;
 pub struct DBLockFileError(#[from] lockfile::Error);
 
 // TODO: Add pending writes to the lock file to get transaction like behavior...
-// Need to ignore the unused field because we actually "use" this field when the struct gets dropped.
+// Need to ignore the unused field because we actually "use" this field when the
+// struct gets dropped.
 #[allow(dead_code)]
 #[derive(Debug)]
 struct DBLockFile(Lockfile);
@@ -107,7 +113,8 @@ impl ModDb {
         let mut mod_file_associations = EnabledModFileAssociations::new();
         let mut installed_mods = HashMap::new();
 
-        // TODO: If there is a clean cross-platform way to access a in memory directory (eg. `/tmp` on Linux), place the lockfile there instead.
+        // TODO: If there is a clean cross-platform way to access a in memory directory
+        // (eg. `/tmp` on Linux), place the lockfile there instead.
         let _lock_file = DBLockFile::new(p)?;
 
         for entry in Utf8Path::read_dir_utf8(p)? {
@@ -117,13 +124,16 @@ impl ModDb {
             if !installed_mod_dir.file_type()?.is_dir() {
                 let unexpected_entry_name = installed_mod_dir.file_name();
                 warn!(
-                    "Found something other than a directory in the mod manager state directory at \"{p:?}\" ({unexpected_entry_name:?})"
+                    "Found something other than a directory in the mod manager state directory at \
+                     \"{p:?}\" ({unexpected_entry_name:?})"
                 );
 
                 continue;
             }
 
-            // We are assuming that any serialized enabled mods do not conflict with each other, since we should only serialize mods that have no conflicts. This will panic if that's not the case.
+            // We are assuming that any serialized enabled mods do not conflict with each
+            // other, since we should only serialize mods that have no conflicts. This will
+            // panic if that's not the case.
             if let Some(installed_mod) =
                 InstalledModInfo::read_installed_mod_contents_dir(installed_mod_dir.path())?
             {
@@ -195,7 +205,8 @@ impl ModDb {
         Ok(())
     }
 
-    /// It's pretty annoying, but we need to write the compressed archive to disk in some cases (looking at `unrar`) before we can parse it.
+    /// It's pretty annoying, but we need to write the compressed archive to
+    /// disk in some cases (looking at `unrar`) before we can parse it.
     fn add_compressed_archive(
         &mut self,
         mod_dir_path: &Utf8Path,
@@ -235,7 +246,8 @@ impl ModDb {
         self.directory_contents.entries.values()
     }
 
-    /// Like `remove_variant` except it expects that things may be randomly missing.
+    /// Like `remove_variant` except it expects that things may be randomly
+    /// missing.
     pub(crate) fn cleanup_traces_of_variant(&mut self, key: &VariantAndId) -> ModDbResult<()> {
         todo!()
     }
@@ -264,7 +276,14 @@ impl ModDbDirectory {
     }
 
     fn get_mod_name_expected(&self, id: ModId) -> &str {
-        self.entries.get(&id).expect("Missing mod entry when constructing path to it's directory! This should never happen!").name.as_str()
+        self.entries
+            .get(&id)
+            .expect(
+                "Missing mod entry when constructing path to it's directory! This should never \
+                 happen!",
+            )
+            .name
+            .as_str()
     }
 
     fn get_in_prog_action_path(&self) -> Utf8PathBuf {
@@ -289,7 +308,8 @@ pub(crate) struct InstalledModInfo {
     /// The name of the mod on GameBanana.
     pub name: String,
 
-    /// Because there can be different variants available to download for a given mod, we need to also be able to specify which one we are using.
+    /// Because there can be different variants available to download for a
+    /// given mod, we need to also be able to specify which one we are using.
     pub installed_variants: HashMap<String, InstalledVariant>,
 
     // TODO: Determine if the mod itself or the variant should hold the version info...
@@ -335,10 +355,16 @@ impl InstalledModInfo {
     fn read_installed_mod_contents_dir(installed_mod_path: &Utf8Path) -> ModDbResult<Option<Self>> {
         let mod_info_path: Utf8PathBuf = installed_mod_path.join(MOD_INFO_FILE_NAME);
 
-        // To keep things simple (at least for now), we're going to assume that the directory structure inside each installed mod directory is always valid. If it's not, we are just going to warn the user at a minimum since validation is going to add a lot of complexity and should only happen if the user does manual intervention.
+        // To keep things simple (at least for now), we're going to assume that the
+        // directory structure inside each installed mod directory is always valid. If
+        // it's not, we are just going to warn the user at a minimum since validation is
+        // going to add a lot of complexity and should only happen if the user does
+        // manual intervention.
         if !mod_info_path.exists() {
             warn!(
-                "Mod {mod_info_path:?} has no \"{MOD_INFO_FILE_NAME}\" file inside it's directory. This should never happen. Consider deleting this mod and adding again. Skipping..."
+                "Mod {mod_info_path:?} has no \"{MOD_INFO_FILE_NAME}\" file inside it's \
+                 directory. This should never happen. Consider deleting this mod and adding \
+                 again. Skipping..."
             );
 
             // TODO: Consider asking the user if we should remove this entry?
@@ -354,7 +380,10 @@ impl InstalledModInfo {
 
             if !mod_variant_dir_path.exists() {
                 warn!(
-                    "Found an installed mod variant that we do not actually have installed data for ({mod_variant_dir_path:?})! Will maybe add automatic resolution support in the future, but for now try deleting this mod and installing again. Skipping..."
+                    "Found an installed mod variant that we do not actually have installed data \
+                     for ({mod_variant_dir_path:?})! Will maybe add automatic resolution support \
+                     in the future, but for now try deleting this mod and installing again. \
+                     Skipping..."
                 );
                 return Ok(None);
             }
@@ -368,7 +397,8 @@ impl InstalledModInfo {
 pub(crate) struct CharacterSlotsAndOverrides {
     char_and_default_slots: CharSkinSlotValue,
 
-    /// In order to avoid conflicts (or if the user just wants a different slot), we can override the original slot to something else.
+    /// In order to avoid conflicts (or if the user just wants a different
+    /// slot), we can override the original slot to something else.
     slot_overrides: Vec<SlotOverride>,
 }
 
@@ -389,7 +419,9 @@ struct SlotOverride {
 
 /// Info that we can use to detect version changes.
 ///
-/// There is really not much data available to detect version changes on GameBanana, so likely in most cases we are going to have to rely on file publish dates.
+/// There is really not much data available to detect version changes on
+/// GameBanana, so likely in most cases we are going to have to rely on file
+/// publish dates.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 struct ModVariantVersioningInfo {
     publish_date: DateTime<Utc>,

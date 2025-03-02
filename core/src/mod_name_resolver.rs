@@ -37,7 +37,7 @@ impl BananaModNameResolver {
                     path
                 );
                 HashMap::default()
-            }
+            },
         };
 
         Ok(Self { local_cache })

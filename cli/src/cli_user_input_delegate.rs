@@ -29,7 +29,7 @@ impl CliUserInputDelegate {
                 Err(_) => {
                     println!("Is not parsable to a non-negative integer.");
                     continue;
-                }
+                },
             };
 
             if n >= num_items {

@@ -24,7 +24,8 @@ const NUM_SEARCH_RESULTS_PER_PAGE: usize = 15;
 #[derive(Debug, Error)]
 pub enum BananaScraperError {
     #[error(
-        "Unable to find the mod \"{0}\". Make sure that the mod name is an exact match (including case) to the mod name on GameBanana."
+        "Unable to find the mod \"{0}\". Make sure that the mod name is an exact match (including \
+         case) to the mod name on GameBanana."
     )]
     ModNameNotFound(String),
 
@@ -32,7 +33,8 @@ pub enum BananaScraperError {
     ModVariantDoesNotFound(String, String),
 
     #[error(
-        "Got a different MD5 checksum for the artifact {0} of the mod {1}: (Expected: {2}, Ours: {3}). This file has likely been tampered with!"
+        "Got a different MD5 checksum for the artifact {0} of the mod {1}: (Expected: {2}, Ours: \
+         {3}). This file has likely been tampered with!"
     )]
     VariantMd5CheckSumMismatch(String, String, String, String),
 
@@ -71,13 +73,15 @@ impl BananaClient {
         debug!("Resolving mod name \"{}\" to it's ID...", name);
 
         let search_req = format!(
-            "{}/apiv11/Util/Search/Results?_sModelName=Mod&_sOrder=best_match&_idGameRow=6498&_sSearchString={}&_csvFields=name&_nPage=1",
+            "{}/apiv11/Util/Search/Results?_sModelName=Mod&_sOrder=best_match&_idGameRow=6498&\
+             _sSearchString={}&_csvFields=name&_nPage=1",
             BANANA_ROOT, name
         );
         let search_resp: SearchResp =
             serde_json::from_str(&self.client.get(search_req).send().await?.text().await?)?;
 
-        // We are going to enforce that searching by a name MUST match the name of the mod exactly, including case.
+        // We are going to enforce that searching by a name MUST match the name of the
+        // mod exactly, including case.
         match search_resp
             .a_records
             .into_iter()
@@ -87,13 +91,16 @@ impl BananaClient {
             None => {
                 if search_resp.a_meta_data.n_record_count > NUM_SEARCH_RESULTS_PER_PAGE {
                     warn!(
-                        "Unable to find an exact mod name match for \"{}\" on GameBanana. We only searched through {} entries but {} were matched by the search in general. Make sure that the name of the mod is entered exactly the way it's spelled (including case) on GameBanana.",
+                        "Unable to find an exact mod name match for \"{}\" on GameBanana. We only \
+                         searched through {} entries but {} were matched by the search in \
+                         general. Make sure that the name of the mod is entered exactly the way \
+                         it's spelled (including case) on GameBanana.",
                         name, NUM_SEARCH_RESULTS_PER_PAGE, search_resp.a_meta_data.n_record_count
                     );
                 }
 
                 Err(BananaScraperError::ModNameNotFound(name.to_string()))
-            }
+            },
         }
     }
 
@@ -108,7 +115,8 @@ impl BananaClient {
         let mod_page_resp: ModPageResp =
             serde_json::from_str(&self.client.get(mod_page_req).send().await?.text().await?)?;
 
-        // We're not going to require an exact match here, but will use fuzzy matching instead.
+        // We're not going to require an exact match here, but will use fuzzy matching
+        // instead.
         let mod_file_names = mod_page_resp
             .a_files
             .iter()
@@ -130,13 +138,13 @@ impl BananaClient {
                     .collect::<Vec<_>>();
 
                 user_input_delegate.select_item_from_list(&sorted_matches_massaged)
-            }
+            },
             FuzzySearchMatchRes::None => {
                 return Err(BananaScraperError::ModVariantDoesNotFound(
                     key.variant_name.to_string(),
                     mod_page_resp.s_name,
                 ));
-            }
+            },
         };
 
         let version = mod_page_resp
@@ -155,7 +163,8 @@ impl BananaClient {
             .await?
             .to_vec();
 
-        // Verify that the MD5 hash matches (idk why they are using MD5 instead od something like SHA256...)
+        // Verify that the MD5 hash matches (idk why they are using MD5 instead od
+        // something like SHA256...)
         let calculated_md5 = format!("{:x}", md5::compute(&variant_download_artifact));
         if calculated_md5 != selected_variant.s_md5_checksum {
             return Err(BananaScraperError::VariantMd5CheckSumMismatch(

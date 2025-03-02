@@ -1,4 +1,7 @@
-//! I want some automated way to detect if the scraping logic ever breaks. I don't think these need to be run with the standard batter of tests, but instead I might setup some automated job that runs every day just to detect when this breaks.
+//! I want some automated way to detect if the scraping logic ever breaks. I
+//! don't think these need to be run with the standard batter of tests, but
+//! instead I might setup some automated job that runs every day just to detect
+//! when this breaks.
 use ultimate_mod_man_rs_scraper::banana_scraper::BananaClient;
 use ultimate_mod_man_rs_utils::{
     types::{ModId, VariantAndId},
@@ -24,7 +27,8 @@ impl UserInputDelegate for DummyDelegate {
     }
 }
 
-// TODO: Add a special compile time flag to prevent these tests from running with other tests...
+// TODO: Add a special compile time flag to prevent these tests from running
+// with other tests...
 #[tokio::test]
 async fn resolve_mod_name_works_works() {
     let res = BananaClient::new()

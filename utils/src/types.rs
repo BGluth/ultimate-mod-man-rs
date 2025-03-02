@@ -48,7 +48,8 @@ impl FromStr for ModIdentifier {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // If we can parse it as a ID (`u64`), then treat it as an ID. Otherwise just assume that we received the mod name.``
+        // If we can parse it as a ID (`u64`), then treat it as an ID. Otherwise just
+        // assume that we received the mod name.``
         s.parse::<u64>()
             .map(ModIdentifier::Id)
             .or_else(|_| Ok(ModIdentifier::Name(s.to_string())))
@@ -70,7 +71,8 @@ pub enum VariantAndIdentifierStrError {
     MissingSlashSeparator(String),
 
     #[error(
-        "Missing \"/\" variant (left hand side of \"/\" when parsing the mod variant and identifier string \"{0}\""
+        "Missing \"/\" variant (left hand side of \"/\" when parsing the mod variant and \
+         identifier string \"{0}\""
     )]
     MissingVariant(String),
 }
@@ -93,7 +95,8 @@ impl VariantAndId {
     }
 }
 
-/// Because mods can have multiple install payloads that affect multiple slots, we need a key type that identifies a mod and one of its specific variants.
+/// Because mods can have multiple install payloads that affect multiple slots,
+/// we need a key type that identifies a mod and one of its specific variants.
 #[derive(Builder, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct VariantAndIdentifier {
     #[builder(setter(custom = true))]
@@ -119,10 +122,10 @@ impl FromStr for VariantAndIdentifier {
                 return Err(VariantAndIdentifierStrError::MissingSlashSeparator(
                     s.to_string(),
                 ));
-            }
+            },
             Some(s) if s.is_empty() => {
                 return Err(VariantAndIdentifierStrError::MissingVariant(s.to_string()));
-            }
+            },
             Some(s) => s.to_string(),
         };
 
@@ -155,9 +158,8 @@ impl VariantAndIdentifierBuilder {
 mod tests {
     use std::str::FromStr;
 
-    use crate::types::{ModIdentifier, VariantAndIdentifierStrError};
-
     use super::{ModId, VariantAndIdentifier, VariantAndIdentifierBuilder};
+    use crate::types::{ModIdentifier, VariantAndIdentifierStrError};
 
     #[test]
     fn mod_identifier_from_name_string_works() {

@@ -72,7 +72,8 @@ impl<U: UserInputDelegate> ModManager<U> {
 
             if self.db.exists(&key) {
                 info!(
-                    "Skipping adding the mod variant {} since it was already installed. (If you want to check for mod updates, run the update command.)",
+                    "Skipping adding the mod variant {} since it was already installed. (If you \
+                     want to check for mod updates, run the update command.)",
                     ident_and_variant
                 );
                 return Ok(());
@@ -147,10 +148,11 @@ impl<U: UserInputDelegate> ModManager<U> {
         match action.deref() {
             Action::Add(key) => {
                 self.db.remove_variant(key)?;
-            }
+            },
         }
 
-        // We finished cleaning up the in progress action, so now we can remove it from disk.
+        // We finished cleaning up the in progress action, so now we can remove it from
+        // disk.
         self.db.remove_in_prog_action()?;
 
         Ok(())

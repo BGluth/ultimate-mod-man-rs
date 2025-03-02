@@ -108,21 +108,21 @@ impl Display for GenericModStats {
             match mod_entry.variants.len() {
                 0 => {
                     p_tree.add_empty_child(format!("{} (No variants)", mod_entry.name));
-                }
+                },
                 1 => {
                     let single_variant = &mod_entry.variants[0];
                     p_tree.add_empty_child(format!(
                         "{} --> {} ({})",
                         mod_entry.name, single_variant.name, single_variant.enabled
                     ));
-                }
+                },
                 _ => {
                     for variant in mod_entry.variants.iter() {
                         p_tree.begin_child(mod_entry.name.clone());
                         p_tree.add_empty_child(format!("{} ({})", variant.name, variant.enabled));
                         p_tree.end_child();
                     }
-                }
+                },
             }
         }
 

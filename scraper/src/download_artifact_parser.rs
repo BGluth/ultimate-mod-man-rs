@@ -102,7 +102,8 @@ impl ModPayloadParseInfo {
     ) -> VariantParseResult<CompressionType> {
         let type_from_magic_number = infer::get(compressed_bytes);
 
-        // We're always going to determine the type of the archive by the magic number, but will output a warning if the file extension does not match.
+        // We're always going to determine the type of the archive by the magic number,
+        // but will output a warning if the file extension does not match.
         let archive_type_str = type_from_magic_number
             .ok_or_else(|| {
                 VariantParseError::NoMagicNumberInArchive(variant_file_name.to_string())
@@ -117,12 +118,15 @@ impl ModPayloadParseInfo {
                 )
             })?;
 
-        // Just as an additional check, if the file has a visible extension that we recognize, if it differs from the magic number, output a warning to the user (but continue going).
+        // Just as an additional check, if the file has a visible extension that we
+        // recognize, if it differs from the magic number, output a warning to the user
+        // (but continue going).
         if let Some(comp_type_from_ext) = Utf8PathBuf::from(variant_file_name).extension() {
             if let Ok(c_type_from_f_name) = CompressionType::from_str(comp_type_from_ext) {
                 if c_type_from_f_name != magic_number_compression_type {
                     warn!(
-                        "The magic number of the archive file does not match the extension in the file name. This is a bit weird, but regardless this is still fine."
+                        "The magic number of the archive file does not match the extension in the \
+                         file name. This is a bit weird, but regardless this is still fine."
                     );
                 }
             }
@@ -146,7 +150,8 @@ impl ModPayloadParseInfo {
     }
 
     pub fn expand_archive_to_disk(self, dest_dir: &Utf8Path) -> VariantParseResult<()> {
-        // Some mods (idk why) don't have the "root" mod directory at the very top, so we need to scan before decompression and look for it.
+        // Some mods (idk why) don't have the "root" mod directory at the very top, so
+        // we need to scan before decompression and look for it.
         let mod_root_directory_offset = self.search_for_mod_root();
         let root_offset = mod_root_directory_offset.as_ref().map(|x| x.as_path());
         let f = Box::new(Self::filter_fn);
@@ -320,9 +325,24 @@ impl ExpandableArchive for TarParser {
         &'a mut self,
     ) -> ArchiveExpansionResult<Box<dyn Iterator<Item = Utf8PathBuf> + 'a>> {
         // Going to do a vec allocation for the sake of maintaining a nicer interface.
-        Ok(Box::new(self.intern.entries()?.collect::<Result<Vec<_>, _>>()?.into_iter()
-            .map(|f| Utf8Path::from_path(f.path().expect("Failed to get the path of a item in a tar file! (Are you running on Windows and unpacking a tar file that is not unicode?")
-            .deref()).unwrap().to_path_buf())))
+        Ok(Box::new(
+            self.intern
+                .entries()?
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .map(|f| {
+                    Utf8Path::from_path(
+                        f.path()
+                            .expect(
+                                "Failed to get the path of a item in a tar file! (Are you running \
+                                 on Windows and unpacking a tar file that is not unicode?",
+                            )
+                            .deref(),
+                    )
+                    .unwrap()
+                    .to_path_buf()
+                }),
+        ))
     }
 }
 
@@ -358,7 +378,8 @@ pub(crate) struct VariantSkinParseInfo {}
 // TODO: Work out how to support more than just skins...
 #[derive(Debug)]
 pub(crate) struct CharacterSlot {
-    /// The name of the character. Keeping this dynamic in order to support custom characters and not just skins.
+    /// The name of the character. Keeping this dynamic in order to support
+    /// custom characters and not just skins.
     char_name: String,
 
     /// The slots specified by the mod.

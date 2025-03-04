@@ -38,7 +38,9 @@ use thiserror::Error;
 use ultimate_mod_man_rs_scraper::{
     banana_scraper::ScrapedBananaModData,
     download_artifact_parser::{ModPayloadParseInfo, VariantParseError},
-    mod_file_classifier::{CharSkinSlotValue, ModFileAssetAssociation, ModFileInfo, SkinSlotIdx},
+    mod_file_classifier::{
+        AffectedAsset, CharSkinSlotValue, ModFileAssetAssociation, ModFileInfo, SkinSlotIdx,
+    },
 };
 use ultimate_mod_man_rs_utils::{
     types::{ModId, VariantAndId},
@@ -90,6 +92,18 @@ impl DBLockFile {
     fn new(p: &Utf8Path) -> DBLockFileResult<Self> {
         Ok(Self(Lockfile::create(p.join(DB_LOCKFILE_NAME))?))
     }
+}
+
+#[derive(Debug)]
+pub(crate) enum UnableToEnableReason {
+    Conflicts(Vec<ConflictingModVariant>),
+    AlreadyEnabled,
+}
+
+#[derive(Debug)]
+pub(crate) struct ConflictingModVariant {
+    key: VariantAndId,
+    slots: Vec<AffectedAsset>,
 }
 
 #[derive(Debug)]
@@ -219,11 +233,7 @@ impl ModDb {
         Ok(mod_artifact_path)
     }
 
-    pub(crate) fn get(&self, key: &VariantAndId) -> Option<&InstalledModInfo> {
-        todo!()
-    }
-
-    pub(crate) fn get_mut(&mut self, key: &VariantAndId) -> Option<&mut InstalledModInfo> {
+    pub(crate) fn get_variant(&self, key: &VariantAndId) -> Option<&InstalledVariant> {
         todo!()
     }
 
@@ -256,6 +266,35 @@ impl ModDb {
     pub(crate) fn cleanup_traces_of_mod(&mut self, key: &ModId) -> ModDbResult<()> {
         todo!()
     }
+
+    pub(crate) fn enable_check(&self, key: &VariantAndId) -> Option<UnableToEnableReason> {
+        todo!()
+    }
+
+    /// Will panic if the mod can not be enabled.
+    pub(crate) fn enable_variant(&mut self, key: VariantAndId) -> ModDbResult<()> {
+        let var_info = self.directory_contents.get_variant_mut_expected(&key);
+        debug_assert!(
+            var_info.enabled,
+            "Tried enabling a mod variant that was already enabled! ({})",
+            key
+        );
+
+        self.mod_file_associations
+            .add_mod_info_to_global_lookup(&var_info.file_info);
+        var_info.enabled = true;
+
+        Ok(())
+    }
+
+    pub(crate) fn disable_variant(&mut self, key: VariantAndId) {
+        let var_info = self.directory_contents.get_variant_mut_expected(&key);
+        debug_assert!(
+            !var_info.enabled,
+            "Tried disabled a mod variant that was already disabled! ({})",
+            key
+        );
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -265,6 +304,17 @@ struct ModDbDirectory {
 }
 
 impl ModDbDirectory {
+    fn get_mod_mut_expected(&mut self, key: ModId) -> &mut InstalledModInfo {
+        self.entries
+            .get_mut(&key)
+            .unwrap_or_else(|| panic!("Expected to have a mod for mod ID {}", key))
+    }
+
+    fn get_variant_mut_expected(&mut self, key: &VariantAndId) -> &mut InstalledVariant {
+        let mod_info = self.get_mod_mut_expected(key.id);
+        mod_info.get_variant_mut_expected(&key.variant_name)
+    }
+
     fn get_path_to_mod(&self, id: ModId) -> Utf8PathBuf {
         let mod_name = &self.get_mod_name_expected(id);
         self.dir_path.join(get_mod_directory_name(id, mod_name))
@@ -348,6 +398,12 @@ impl InstalledModInfo {
         self.installed_variants.insert(var_name, installed_var);
 
         Ok(())
+    }
+
+    fn get_variant_mut_expected(&mut self, key: &str) -> &mut InstalledVariant {
+        self.installed_variants
+            .get_mut(key)
+            .unwrap_or_else(|| panic!("Expected to have a variant for the key {}", key))
     }
 }
 
@@ -454,6 +510,15 @@ impl InstalledVariant {
     }
 }
 
+/// We also need to perform "global" lookups to detect conflicts. Specifically,
+/// we need to be able to quickly detect if a given file in a mod is already
+/// occupied with another mod.
+///
+/// This is constructed each time during startup and is not serialized (may
+/// change in the future).
+///
+/// Also note that this lookup contains all mod files after overrides have been
+/// applied.
 #[derive(Debug)]
 struct EnabledModFileAssociations {
     association_lookup: HashMap<ModFileAssetAssociation, ModId>,

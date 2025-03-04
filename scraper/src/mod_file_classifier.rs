@@ -27,6 +27,14 @@ enum ModType {
     Core,
 }
 
+#[derive(Clone, Debug)]
+pub enum AffectedAsset {
+    CharacterSkin(CharSkinSlotValue),
+    StageSkin(StageSlotValue),
+    Global(Utf8PathBuf),
+}
+
+// TODO: Consider merging with `AffectedAsset`...
 /// What "asset" the mod file is associated with (eg. skin slot 02).
 #[derive(Clone, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
 pub enum ModFileAssetAssociation {

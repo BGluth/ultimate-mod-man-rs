@@ -15,7 +15,7 @@ use ultimate_mod_man_rs_utils::{
 use crate::{
     cmds::status::StatusCmdInfo,
     in_prog_action::{Action, InProgAction},
-    mod_db::{ModDb, ModDbError},
+    mod_db::{ConflictingModVariant, ModDb, ModDbError, UnableToEnableReason},
     mod_name_resolver::{BananaModNameResolver, ModNameResolverError},
 };
 
@@ -67,9 +67,6 @@ impl<U: UserInputDelegate> ModManager<U> {
                 .resolve_key(ident_and_variant.clone(), &self.scraper)
                 .await?;
 
-            self.db
-                .journal_action_as_in_prog(Action::Add(key.clone()))?;
-
             if self.db.exists(&key) {
                 info!(
                     "Skipping adding the mod variant {} since it was already installed. (If you \
@@ -78,6 +75,19 @@ impl<U: UserInputDelegate> ModManager<U> {
                 );
                 return Ok(());
             }
+
+            if let Some(reason) = self.db.enable_check(&key) {
+                match reason {
+                    UnableToEnableReason::Conflicts(conflicts) => {
+                        info!("Conflicts detected when trying to enable {}!", key);
+                        self.handle_variant_add_conflicts(&conflicts);
+                    },
+                    UnableToEnableReason::AlreadyEnabled => unreachable!(),
+                }
+            }
+
+            self.db
+                .journal_action_as_in_prog(Action::Add(key.clone()))?;
 
             // Mod is not installed.
             let downloaded_mod_variant = self
@@ -91,6 +101,10 @@ impl<U: UserInputDelegate> ModManager<U> {
         }
 
         Ok(())
+    }
+
+    fn handle_variant_add_conflicts(&mut self, conflicts: &[ConflictingModVariant]) {
+        todo!()
     }
 
     pub fn delete_mods<I: IntoIterator<Item = ModIdentifier>>(

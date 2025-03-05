@@ -71,3 +71,14 @@ Internal details:
         - Next scan all installed mods in Acropolis and check the mod directory hashes.
         - For each hash that is different, update the version on the Switch (and print info to the user).
         - Apply any slot overrides for any mods (just rename the directories according to the map).
+
+
+Conflict resolution details:
+- When a mod is added, we need to check that no conflicts exist before enabling it.
+- If conflicts are detected:
+    - Present the user information about the conflicts (eg. number of conflicting slots, slots that conflict).
+    - For each conflicting slot, present one more more resolution options (to apply to either this or the other conflicting variant):
+        - Swap to an open slot.
+        - Disable slot.
+        - Disable mod entirely.
+    - Also note that some assets do not have "slots" and are global assets. For these cases, swapping is not an option.

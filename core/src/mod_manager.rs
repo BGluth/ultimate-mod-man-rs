@@ -3,12 +3,9 @@ use std::ops::Deref;
 use camino::Utf8Path;
 use log::info;
 use thiserror::Error;
-use ultimate_mod_man_rs_scraper::{
-    banana_scraper::{BananaClient, BananaScraperError},
-    mod_file_classifier::SkinSlotIdx,
-};
+use ultimate_mod_man_rs_scraper::banana_scraper::{BananaClient, BananaScraperError};
 use ultimate_mod_man_rs_utils::{
-    types::{ModIdentifier, VariantAndIdentifier},
+    types::{ModIdentifier, SkinSlotIdx, VariantAndId, VariantAndIdentifier},
     user_input_delegate::UserInputDelegate,
 };
 
@@ -80,7 +77,7 @@ impl<U: UserInputDelegate> ModManager<U> {
                 match reason {
                     UnableToEnableReason::Conflicts(conflicts) => {
                         info!("Conflicts detected when trying to enable {}!", key);
-                        self.handle_variant_add_conflicts(&conflicts);
+                        self.handle_variant_add_conflicts(&key, &conflicts);
                     },
                     UnableToEnableReason::AlreadyEnabled => unreachable!(),
                 }
@@ -103,8 +100,13 @@ impl<U: UserInputDelegate> ModManager<U> {
         Ok(())
     }
 
-    fn handle_variant_add_conflicts(&mut self, conflicts: &[ConflictingModVariant]) {
-        todo!()
+    fn handle_variant_add_conflicts(
+        &mut self,
+        key: &VariantAndId,
+        conflicts: &[ConflictingModVariant],
+    ) {
+        // The mod that we want to enable has one or more conflicts with other mods.
+        for conflict in conflicts {}
     }
 
     pub fn delete_mods<I: IntoIterator<Item = ModIdentifier>>(

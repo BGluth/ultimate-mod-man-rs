@@ -1,6 +1,15 @@
-use std::{fmt, io};
+use std::{
+    fmt::{self, Display},
+    io,
+};
 
-use ultimate_mod_man_rs_utils::user_input_delegate::UserInputDelegate;
+use ultimate_mod_man_rs_utils::{
+    types::{AssetSlot, VariantAndId},
+    user_input_delegate::{
+        PickedResolutionOptionNonSwappable, PickedResolutionOptionSwappable, UserInputDelegate,
+        VariantConflictSummary,
+    },
+};
 
 #[derive(Debug)]
 pub(crate) struct CliUserInputDelegate {
@@ -62,5 +71,28 @@ impl UserInputDelegate for CliUserInputDelegate {
         }
 
         self.get_item_index_of_item(items.len())
+    }
+
+    fn display_variant_conflict_summary(&mut self, summary: &VariantConflictSummary) {
+        todo!()
+    }
+
+    fn get_variant_conflict_resolution_option_swappable<T: Display>(
+        &mut self,
+        existing: &VariantAndId,
+        new: &VariantAndId,
+        slot: AssetSlot,
+        available_slots: &[T],
+    ) -> PickedResolutionOptionSwappable {
+        todo!()
+    }
+
+    fn get_variant_conflict_resolution_option_non_swappable<T: Display>(
+        &mut self,
+        existing: &VariantAndId,
+        new: &VariantAndId,
+        slot: AssetSlot,
+    ) -> PickedResolutionOptionNonSwappable {
+        todo!()
     }
 }

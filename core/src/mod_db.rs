@@ -38,12 +38,10 @@ use thiserror::Error;
 use ultimate_mod_man_rs_scraper::{
     banana_scraper::ScrapedBananaModData,
     download_artifact_parser::{ModPayloadParseInfo, VariantParseError},
-    mod_file_classifier::{
-        AffectedAsset, CharSkinSlotValue, ModFileAssetAssociation, ModFileInfo, SkinSlotIdx,
-    },
+    mod_file_classifier::{ModFileAssetAssociation, ModFileInfo},
 };
 use ultimate_mod_man_rs_utils::{
-    types::{ModId, VariantAndId},
+    types::{AssetSlot, CharSkinSlotValue, ModId, SkinSlotIdx, VariantAndId},
     utils::{DeserializationError, deserialize_data_from_path},
 };
 
@@ -103,7 +101,7 @@ pub(crate) enum UnableToEnableReason {
 #[derive(Debug)]
 pub(crate) struct ConflictingModVariant {
     key: VariantAndId,
-    slots: Vec<AffectedAsset>,
+    slots: Vec<AssetSlot>,
 }
 
 #[derive(Debug)]
@@ -238,7 +236,7 @@ impl ModDb {
     }
 
     pub(crate) fn exists(&self, key: &VariantAndId) -> bool {
-        self.directory_contents.entries.contains_key(&key.id)
+        self.get_variant(key).is_some()
     }
 
     pub(crate) fn remove_variant(

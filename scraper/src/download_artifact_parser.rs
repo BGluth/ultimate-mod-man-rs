@@ -9,10 +9,9 @@ use std::{
 use camino::{Utf8Path, Utf8PathBuf};
 use log::warn;
 use thiserror::Error;
+use ultimate_mod_man_rs_utils::types::CharSkinSlotValue;
 use unrar::{Archive, error::UnrarError};
 use zip::{ZipArchive, result::ZipError};
-
-use crate::mod_file_classifier::CharSkinSlotValue;
 
 const MAGIC_NUMBER_BYTE_READ_AMOUNT: usize = 100;
 

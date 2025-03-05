@@ -2,10 +2,15 @@
 //! don't think these need to be run with the standard batter of tests, but
 //! instead I might setup some automated job that runs every day just to detect
 //! when this breaks.
+use std::fmt::Display;
+
 use ultimate_mod_man_rs_scraper::banana_scraper::BananaClient;
 use ultimate_mod_man_rs_utils::{
-    types::{ModId, VariantAndId},
-    user_input_delegate::UserInputDelegate,
+    types::{AssetSlot, ModId, VariantAndId},
+    user_input_delegate::{
+        PickedResolutionOptionNonSwappable, PickedResolutionOptionSwappable, UserInputDelegate,
+        VariantConflictSummary,
+    },
 };
 
 static BULLEY_MAGUIRE_MOD_NAME: &str = "BULLY MAGUIRE over Joker";
@@ -24,6 +29,29 @@ impl UserInputDelegate for DummyDelegate {
 
     fn select_item_from_list<T>(&mut self, items: &[T]) -> usize {
         0
+    }
+
+    fn display_variant_conflict_summary(&mut self, summary: &VariantConflictSummary) {}
+
+    fn get_variant_conflict_resolution_option_swappable<T: Display>(
+        &mut self,
+        existing: &VariantAndId,
+        new: &VariantAndId,
+        slot: AssetSlot,
+        available_slots: &[T],
+    ) -> PickedResolutionOptionSwappable {
+        PickedResolutionOptionSwappable::NonSwapOption(
+            PickedResolutionOptionNonSwappable::KeepExisting,
+        )
+    }
+
+    fn get_variant_conflict_resolution_option_non_swappable<T: Display>(
+        &mut self,
+        existing: &VariantAndId,
+        new: &VariantAndId,
+        slot: AssetSlot,
+    ) -> PickedResolutionOptionNonSwappable {
+        PickedResolutionOptionNonSwappable::KeepExisting
     }
 }
 

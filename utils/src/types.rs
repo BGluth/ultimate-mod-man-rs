@@ -4,6 +4,7 @@ use std::{
     str::FromStr,
 };
 
+use camino::Utf8PathBuf;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -153,6 +154,51 @@ impl VariantAndIdentifierBuilder {
         self
     }
 }
+
+#[derive(Clone, Debug)]
+pub enum AssetSlot {
+    CharacterSkin(CharSkinSlotValue),
+    StageSkin(StageSlotValue),
+    Global(Utf8PathBuf),
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct CharSkinSlotValue {
+    char_key: String,
+    skin_slot_idx: SkinSlotIdx,
+}
+
+impl Display for CharSkinSlotValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{} - {}", self.char_key, self.skin_slot_idx)
+    }
+}
+
+/// A skin slot can actually go beyond 0 - 7 where anything beyond `7` is used
+/// for special purposes. We still need to detect collisions in these ranges,
+/// although maybe we can have less strict logic for handling them.
+#[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct SkinSlotIdx(u8);
+
+impl Display for SkinSlotIdx {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            0..=7 => write!(f, "Skin slot")?,
+            _ => write!(f, "Custom skin slot")?,
+        };
+
+        write!(f, " C{:2x} ({})", self.0, self.0)
+    }
+}
+
+impl SkinSlotIdx {
+    pub fn is_normal_skin_slot(&self) -> bool {
+        matches!(self.0, 0..=7)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct StageSlotValue(u8);
 
 #[cfg(test)]
 mod tests {

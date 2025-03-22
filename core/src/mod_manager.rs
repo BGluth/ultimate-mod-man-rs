@@ -5,7 +5,9 @@ use log::info;
 use thiserror::Error;
 use ultimate_mod_man_rs_scraper::banana_scraper::{BananaClient, BananaScraperError};
 use ultimate_mod_man_rs_utils::{
-    types::{ModIdentifier, SkinSlotIdx, VariantAndId, VariantAndIdentifier},
+    types::{
+        ModIdentifier, PickedResolutionOption, SkinSlotValue, VariantAndId, VariantAndIdentifier,
+    },
     user_input_delegate::UserInputDelegate,
 };
 
@@ -103,10 +105,60 @@ impl<U: UserInputDelegate> ModManager<U> {
     fn handle_variant_add_conflicts(
         &mut self,
         key: &VariantAndId,
-        conflicts: &[ConflictingModVariant],
+        variant_conflicts: &[ConflictingModVariant],
     ) {
+        let summary = self
+            .db
+            .get_variant_conflict_summary(key)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Expected to find conflicts for mod variant {} but none were found! This is a \
+                     bug!",
+                    key
+                )
+            });
+        self.user_input_delegate
+            .display_variant_conflict_summary(&summary);
+
         // The mod that we want to enable has one or more conflicts with other mods.
-        for conflict in conflicts {}
+        for variant_conflict in variant_conflicts {
+            // Start a "transaction" of configuring mods that takes effect once all
+            // conflicts are resolved.
+            let mut mod_db_txn = self.db.resolve_conflict(variant_conflict);
+
+            while let Some(sub_conflict) = mod_db_txn.get_next_conflict_to_resolve() {
+                let slot_conflict = sub_conflict.slot();
+
+                let picked_res = match sub_conflict.swappable_info() {
+                    Some(available_slots) => {
+                        // We can swap this.
+                        self.user_input_delegate
+                            .get_variant_conflict_resolution_option_swappable(
+                                &variant_conflict.key,
+                                key,
+                                slot_conflict,
+                                &available_slots,
+                            )
+                    },
+                    None => {
+                        // Not swappable.
+                        let res = self
+                            .user_input_delegate
+                            .get_variant_conflict_resolution_option_non_swappable(
+                                &variant_conflict.key,
+                                key,
+                                slot_conflict,
+                            );
+                        PickedResolutionOption::NonSwapOption(res)
+                    },
+                };
+
+                mod_db_txn.resolve_conflict(picked_res);
+            }
+
+            // All conflicts have been resolved. Commit the changes to the DB.
+            mod_db_txn.commit();
+        }
     }
 
     pub fn delete_mods<I: IntoIterator<Item = ModIdentifier>>(
@@ -139,8 +191,8 @@ impl<U: UserInputDelegate> ModManager<U> {
         &mut self,
         k: VariantAndIdentifier,
         char_key: &str,
-        s1: SkinSlotIdx,
-        s2: SkinSlotIdx,
+        s1: SkinSlotValue,
+        s2: SkinSlotValue,
     ) -> ModManagerResult<()> {
         todo!()
     }

@@ -1,37 +1,28 @@
-use std::fmt::Display;
+use std::{fmt::Display, path::PathBuf};
 
-use crate::types::{AssetSlot, VariantAndId};
-
-pub type SwapPickedIndex = usize;
-
-#[derive(Debug)]
-pub enum PickedResolutionOptionSwappable {
-    NonSwapOption(PickedResolutionOptionNonSwappable),
-    Swap(SwapPickedIndex),
-}
-
-#[derive(Debug)]
-pub enum PickedResolutionOptionNonSwappable {
-    KeepExisting,
-    Replace,
-}
+use crate::types::{
+    AssetSlot, AvailableSlotsToSwapToInfo, PickedNonSwappableResolutionOption,
+    PickedResolutionOption, SkinSlotValue, StageSlotValue, VariantAndId,
+};
 
 #[derive(Debug)]
 pub struct VariantConflictSummary {
     new_variant: VariantAndId,
-    conflicting_variants: Vec<ConflictingVariant>,
-}
-
-#[derive(Debug)]
-pub struct ConflictingVariant {
-    key: VariantAndId,
-    conflicting_slots: Vec<ConflictingSlot>,
-}
-
-#[derive(Debug)]
-pub struct ConflictingSlot {
-    slot: AssetSlot,
+    conflicting_slot_info: ConflictingSlotInfo,
     num_files: usize,
+}
+
+#[derive(Debug)]
+pub enum ConflictingSlotInfo {
+    Skin(ConflictingSkinSlotInfo),
+    Stage(StageSlotValue),
+    Global(PathBuf),
+}
+
+#[derive(Debug)]
+pub struct ConflictingSkinSlotInfo {
+    slot: SkinSlotValue,
+    available_slots_to_swap_to: Vec<SkinSlotValue>,
 }
 
 pub trait UserInputDelegate {
@@ -42,18 +33,18 @@ pub trait UserInputDelegate {
 
     fn display_variant_conflict_summary(&mut self, summary: &VariantConflictSummary);
 
-    fn get_variant_conflict_resolution_option_swappable<T: Display>(
+    fn get_variant_conflict_resolution_option_swappable(
         &mut self,
         existing: &VariantAndId,
         new: &VariantAndId,
-        slot: AssetSlot,
-        available_slots: &[T],
-    ) -> PickedResolutionOptionSwappable;
+        slot: &AssetSlot,
+        available_slots: &AvailableSlotsToSwapToInfo,
+    ) -> PickedResolutionOption;
 
-    fn get_variant_conflict_resolution_option_non_swappable<T: Display>(
+    fn get_variant_conflict_resolution_option_non_swappable(
         &mut self,
         existing: &VariantAndId,
         new: &VariantAndId,
-        slot: AssetSlot,
-    ) -> PickedResolutionOptionNonSwappable;
+        slot: &AssetSlot,
+    ) -> PickedNonSwappableResolutionOption;
 }

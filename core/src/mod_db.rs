@@ -41,7 +41,12 @@ use ultimate_mod_man_rs_scraper::{
     mod_file_classifier::{ModFileAssetAssociation, ModFileInfo},
 };
 use ultimate_mod_man_rs_utils::{
-    types::{AssetSlot, CharSkinSlotValue, ModId, SkinSlotIdx, VariantAndId},
+    types::{
+        AssetSlot, AvailableSlotsToSwapToInfo, CharSkinSlotValue, ModId,
+        PickedNonSwappableResolutionOption, PickedResolutionOption, SkinSlotIdx, SkinSlotValue,
+        StageSlotIdx, StageSlotValue, VariantAndId,
+    },
+    user_input_delegate::VariantConflictSummary,
     utils::{DeserializationError, deserialize_data_from_path},
 };
 
@@ -100,8 +105,11 @@ pub(crate) enum UnableToEnableReason {
 
 #[derive(Debug)]
 pub(crate) struct ConflictingModVariant {
-    key: VariantAndId,
-    slots: Vec<AssetSlot>,
+    /// Key of the mod variant with unresolved conflicts.
+    pub(crate) key: VariantAndId,
+
+    /// All slots that currently have a conflict.
+    pub(crate) slots: Vec<AssetSlot>,
 }
 
 #[derive(Debug)]
@@ -293,6 +301,20 @@ impl ModDb {
             key
         );
     }
+
+    pub(crate) fn get_variant_conflict_summary(
+        &self,
+        key: &VariantAndId,
+    ) -> Option<VariantConflictSummary> {
+        todo!()
+    }
+
+    pub(crate) fn resolve_conflict(
+        &self,
+        conflict: &ConflictingModVariant,
+    ) -> ModDbConflictResolver {
+        todo!()
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -467,8 +489,8 @@ impl CharacterSlotsAndOverrides {
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 struct SlotOverride {
-    old: SkinSlotIdx,
-    new: SkinSlotIdx,
+    old: SkinSlotValue,
+    new: SkinSlotValue,
 }
 
 /// Info that we can use to detect version changes.
@@ -538,4 +560,102 @@ impl EnabledModFileAssociations {
     ) -> Option<ModId> {
         todo!()
     }
+}
+
+#[derive(Debug)]
+pub(crate) struct ModDbConflictResolver<'a> {
+    db: &'a mut ModDb,
+    pending_changes: HashMap<AssetSlot, AssetSlotChange>,
+    conflicts_remaining: Vec<AssetSlot>,
+}
+
+impl<'a> ModDbConflictResolver<'a> {
+    pub(crate) fn get_next_conflict_to_resolve(&mut self) -> Option<AssetConflict> {
+        todo!()
+    }
+
+    pub(crate) fn resolve_conflict(&mut self, resolution: PickedResolutionOption) {
+        todo!()
+    }
+
+    pub(crate) fn commit(self) {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum AssetSlotChange {
+    CharacterSkin(SkinSlotIdx),
+    StageSkin(StageSlotIdx),
+    Global(Utf8PathBuf),
+}
+
+pub(crate) enum AssetConflict {
+    CharacterSkin(CharacterSkinConflict),
+    Stage(StageSlotConflict),
+    Global(GlobalConflict),
+}
+
+impl AssetConflict {
+    pub(crate) fn slot(&self) -> &AssetSlot {
+        todo!()
+    }
+
+    pub(crate) fn swappable_info(&self) -> Option<AvailableSlotsToSwapToInfo> {
+        match self {
+            // TODO: Remove clone once we figure out API...
+            AssetConflict::CharacterSkin(character_skin_conflict) => {
+                Some(AvailableSlotsToSwapToInfo::CharacterSkin(
+                    character_skin_conflict.possible_resolutions.clone(),
+                ))
+            },
+            _ => None,
+        }
+    }
+}
+
+pub(crate) struct CharacterSkinConflict {
+    existing: CharSkinSlotValue,
+    possible_resolutions: Vec<SkinSlotValue>,
+}
+
+impl CharacterSkinConflict {
+    fn resolve(self, res: PickedNonSwappableResolutionOption) -> CharSkinSlotResolution {
+        todo!()
+    }
+}
+
+pub(crate) struct CharSkinSlotResolution {
+    res: PickedResolutionOption,
+}
+
+pub(crate) struct StageSlotConflict {
+    existing: StageSlotValue,
+}
+
+impl StageSlotConflict {
+    pub(crate) fn resolve(
+        self,
+        res: PickedNonSwappableResolutionOption,
+    ) -> StageSkinSlotResolution {
+        todo!()
+    }
+}
+
+pub(crate) struct StageSkinSlotResolution {
+    res: PickedNonSwappableResolutionOption,
+}
+
+pub(crate) struct GlobalConflict {
+    existing: Utf8PathBuf,
+}
+
+impl GlobalConflict {
+    pub(crate) fn resolve(self, res: PickedNonSwappableResolutionOption) -> GlobalResolution {
+        todo!()
+    }
+}
+
+pub(crate) struct GlobalResolution {
+    res: PickedNonSwappableResolutionOption,
 }

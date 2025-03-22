@@ -1,14 +1,14 @@
 use std::{
-    fmt::{self, Display},
+    fmt::{self},
     io,
 };
 
 use ultimate_mod_man_rs_utils::{
-    types::{AssetSlot, VariantAndId},
-    user_input_delegate::{
-        PickedResolutionOptionNonSwappable, PickedResolutionOptionSwappable, UserInputDelegate,
-        VariantConflictSummary,
+    types::{
+        AssetSlot, AvailableSlotsToSwapToInfo, PickedNonSwappableResolutionOption,
+        PickedResolutionOption, VariantAndId,
     },
+    user_input_delegate::{UserInputDelegate, VariantConflictSummary},
 };
 
 #[derive(Debug)]
@@ -77,22 +77,22 @@ impl UserInputDelegate for CliUserInputDelegate {
         todo!()
     }
 
-    fn get_variant_conflict_resolution_option_swappable<T: Display>(
+    fn get_variant_conflict_resolution_option_swappable(
         &mut self,
         existing: &VariantAndId,
         new: &VariantAndId,
-        slot: AssetSlot,
-        available_slots: &[T],
-    ) -> PickedResolutionOptionSwappable {
+        slot: &AssetSlot,
+        available_slots_info: &AvailableSlotsToSwapToInfo,
+    ) -> PickedResolutionOption {
         todo!()
     }
 
-    fn get_variant_conflict_resolution_option_non_swappable<T: Display>(
+    fn get_variant_conflict_resolution_option_non_swappable(
         &mut self,
         existing: &VariantAndId,
         new: &VariantAndId,
-        slot: AssetSlot,
-    ) -> PickedResolutionOptionNonSwappable {
+        slot: &AssetSlot,
+    ) -> PickedNonSwappableResolutionOption {
         todo!()
     }
 }

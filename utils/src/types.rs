@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub type ModId = u64;
+pub type SkinSlotIdx = usize;
+pub type StageSlotIdx = usize;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum ModIdentifier {
@@ -162,10 +164,16 @@ pub enum AssetSlot {
     Global(Utf8PathBuf),
 }
 
+#[derive(Debug)]
+pub enum AvailableSlotsToSwapToInfo {
+    CharacterSkin(Vec<SkinSlotValue>),
+    // TODO: Add music...
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct CharSkinSlotValue {
     char_key: String,
-    skin_slot_idx: SkinSlotIdx,
+    skin_slot_idx: SkinSlotValue,
 }
 
 impl Display for CharSkinSlotValue {
@@ -178,9 +186,9 @@ impl Display for CharSkinSlotValue {
 /// for special purposes. We still need to detect collisions in these ranges,
 /// although maybe we can have less strict logic for handling them.
 #[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
-pub struct SkinSlotIdx(u8);
+pub struct SkinSlotValue(u8);
 
-impl Display for SkinSlotIdx {
+impl Display for SkinSlotValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.0 {
             0..=7 => write!(f, "Skin slot")?,
@@ -191,7 +199,7 @@ impl Display for SkinSlotIdx {
     }
 }
 
-impl SkinSlotIdx {
+impl SkinSlotValue {
     pub fn is_normal_skin_slot(&self) -> bool {
         matches!(self.0, 0..=7)
     }
@@ -199,6 +207,18 @@ impl SkinSlotIdx {
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct StageSlotValue(u8);
+
+#[derive(Debug)]
+pub enum PickedResolutionOption {
+    NonSwapOption(PickedNonSwappableResolutionOption),
+    Swap(usize),
+}
+
+#[derive(Debug)]
+pub enum PickedNonSwappableResolutionOption {
+    KeepExisting,
+    Replace,
+}
 
 #[cfg(test)]
 mod tests {

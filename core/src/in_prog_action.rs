@@ -32,12 +32,14 @@ pub enum InProgActionError {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) enum Action {
     Add(VariantAndId),
+    Remove(VariantAndId),
 }
 
 impl Display for Action {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Action::Add(key) => write!(f, "Add - ({})", key),
+            Action::Remove(key) => write!(f, "Remove - ({})", key),
         }
     }
 }

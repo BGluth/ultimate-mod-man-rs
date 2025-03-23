@@ -199,7 +199,7 @@ impl ModDb {
         Ok(())
     }
 
-    pub(crate) fn add(
+    pub(crate) fn add_variant(
         &mut self,
         key: &VariantAndId,
         payload: ScrapedBananaModData,
@@ -247,6 +247,8 @@ impl ModDb {
         self.get_variant(key).is_some()
     }
 
+    /// Removes a variant from the database. This also removes all files
+    /// associated with the variant.
     pub(crate) fn remove_variant(
         &mut self,
         key: &VariantAndId,
@@ -273,7 +275,9 @@ impl ModDb {
         todo!()
     }
 
-    pub(crate) fn enable_check(&self, key: &VariantAndId) -> Option<UnableToEnableReason> {
+    /// Check if the mod is able to be enabled. This will check for conflicts
+    /// with any assets in the mod.
+    pub(crate) fn variant_enable_check(&self, key: &VariantAndId) -> Option<UnableToEnableReason> {
         todo!()
     }
 
@@ -507,7 +511,7 @@ impl InstalledVariant {
             name,
             file_info,
             overrides: Vec::default(),
-            enabled: true,
+            enabled: false,
         }
     }
 }

@@ -75,16 +75,6 @@ impl<U: UserInputDelegate> ModManager<U> {
                 return Ok(());
             }
 
-            if let Some(reason) = self.db.enable_check(&key) {
-                match reason {
-                    UnableToEnableReason::Conflicts(conflicts) => {
-                        info!("Conflicts detected when trying to enable {}!", key);
-                        self.handle_variant_add_conflicts(&key, &conflicts);
-                    },
-                    UnableToEnableReason::AlreadyEnabled => unreachable!(),
-                }
-            }
-
             self.db
                 .journal_action_as_in_prog(Action::Add(key.clone()))?;
 
@@ -94,7 +84,17 @@ impl<U: UserInputDelegate> ModManager<U> {
                 .download_mod_variant(&mut self.user_input_delegate, &key)
                 .await?;
 
-            self.db.add(&key, downloaded_mod_variant)?;
+            self.db.add_variant(&key, downloaded_mod_variant)?;
+
+            if let Some(reason) = self.db.variant_enable_check(&key) {
+                match reason {
+                    UnableToEnableReason::Conflicts(conflicts) => {
+                        info!("Conflicts detected when trying to enable {}!", key);
+                        self.handle_variant_add_conflicts(&key, &conflicts);
+                    },
+                    UnableToEnableReason::AlreadyEnabled => unreachable!(),
+                }
+            }
 
             self.db.remove_in_prog_action()?;
         }
@@ -161,11 +161,33 @@ impl<U: UserInputDelegate> ModManager<U> {
         }
     }
 
-    pub fn delete_mods<I: IntoIterator<Item = ModIdentifier>>(
+    pub async fn delete_variants<I: IntoIterator<Item = VariantAndIdentifier>>(
         &mut self,
         idents: I,
     ) -> ModManagerResult<()> {
-        todo!()
+        self.cleanup_any_incomplete_in_prog_action()?;
+
+        for ident in idents {
+            let key = self
+                .mod_resolution_cache
+                .resolve_key(ident.clone(), &self.scraper)
+                .await?;
+
+            if !self.db.exists(&key) {
+                info!(
+                    "Skipping deleting the mod variant {} since it was not installed.",
+                    ident
+                );
+                return Ok(());
+            }
+
+            self.db
+                .journal_action_as_in_prog(Action::Remove(key.clone()))?;
+            self.db.remove_variant(&key)?;
+            self.db.remove_in_prog_action()?;
+        }
+
+        Ok(())
     }
 
     pub fn sync_with_switch() -> ModManagerResult<()> {
@@ -215,6 +237,10 @@ impl<U: UserInputDelegate> ModManager<U> {
     ) -> ModManagerResult<()> {
         match action.deref() {
             Action::Add(key) => {
+                self.db.remove_variant(key)?;
+            },
+            Action::Remove(key) => {
+                // Continue with the deletion of the mod variant.
                 self.db.remove_variant(key)?;
             },
         }

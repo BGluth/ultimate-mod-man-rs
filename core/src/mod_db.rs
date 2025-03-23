@@ -38,7 +38,7 @@ use thiserror::Error;
 use ultimate_mod_man_rs_scraper::{
     banana_scraper::ScrapedBananaModData,
     download_artifact_parser::{ModPayloadParseInfo, VariantParseError},
-    mod_file_classifier::{ModFileAssetAssociation, ModFileInfo},
+    mod_file_classifier::{ModFileAssetAssociation, VariantFileInfo},
 };
 use ultimate_mod_man_rs_utils::{
     types::{
@@ -154,11 +154,24 @@ impl ModDb {
             // We are assuming that any serialized enabled mods do not conflict with each
             // other, since we should only serialize mods that have no conflicts. This will
             // panic if that's not the case.
-            if let Some(installed_mod) =
+            if let Some(mut installed_mod) =
                 InstalledModInfo::read_installed_mod_contents_dir(installed_mod_dir.path())?
             {
-                for var_info in installed_mod.installed_variants.values() {
-                    mod_file_associations.add_mod_info_to_global_lookup(&var_info.file_info);
+                for var_info in installed_mod.installed_variants.values_mut() {
+                    if mod_file_associations
+                        .add_mod_info_to_global_lookup(&var_info.file_info)
+                        .is_some()
+                    {
+                        warn!(
+                            "Mod variant ({}) that was serialized as enabled is unable to be \
+                             enabled due to conflicts. This is either a bug in the manager or the \
+                             serialized data may have been modified outside of this tool. \
+                             Disabling...",
+                            var_info.name
+                        )
+                    }
+
+                    var_info.enabled = false;
                 }
 
                 installed_mods.insert(installed_mod.id, installed_mod);
@@ -249,11 +262,32 @@ impl ModDb {
 
     /// Removes a variant from the database. This also removes all files
     /// associated with the variant.
+    ///
+    /// Because we need to handle the case where a remove may have not fully
+    /// completed and only do part of the work, we need to keep going if we
+    /// discover that some state is not there (eg. variant doesn't exist in
+    /// database).
     pub(crate) fn remove_variant(
         &mut self,
         key: &VariantAndId,
     ) -> ModDbResult<Option<InstalledVariant>> {
-        todo!()
+        let mod_info = self.directory_contents.get_mod_mut_expected(key.id);
+
+        let var_info = mod_info.installed_variants.remove(&key.variant_name);
+        if var_info.is_none() {
+            warn!(
+                "Tried removing a mod variant that was not installed! ({})",
+                key
+            );
+        }
+
+        // Check if the directory exists anyways.
+        let mod_variant_path = self.directory_contents.get_path_to_mod_variant(key);
+        if fs::exists(&mod_variant_path)? {
+            fs::remove_dir_all(&mod_variant_path)?;
+        }
+
+        Ok(var_info)
     }
 
     pub(crate) fn remove_mod(&mut self, id: &ModId) -> Option<InstalledModInfo> {
@@ -281,20 +315,28 @@ impl ModDb {
         todo!()
     }
 
-    /// Will panic if the mod can not be enabled.
-    pub(crate) fn enable_variant(&mut self, key: VariantAndId) -> ModDbResult<()> {
+    /// Attempts to enable the mod. If it can not be enabled, the reason along
+    /// with additional info will be returned.
+    pub(crate) fn enable_variant(
+        &mut self,
+        key: VariantAndId,
+    ) -> ModDbResult<Option<UnableToEnableReason>> {
         let var_info = self.directory_contents.get_variant_mut_expected(&key);
-        debug_assert!(
-            var_info.enabled,
-            "Tried enabling a mod variant that was already enabled! ({})",
-            key
-        );
 
-        self.mod_file_associations
-            .add_mod_info_to_global_lookup(&var_info.file_info);
+        if var_info.enabled {
+            return Ok(Some(UnableToEnableReason::AlreadyEnabled));
+        }
+
+        if let Some(conflicts) = self
+            .mod_file_associations
+            .add_mod_info_to_global_lookup(&var_info.file_info)
+        {
+            return Ok(Some(UnableToEnableReason::Conflicts(conflicts)));
+        }
+
         var_info.enabled = true;
 
-        Ok(())
+        Ok(None)
     }
 
     pub(crate) fn disable_variant(&mut self, key: VariantAndId) {
@@ -422,7 +464,7 @@ impl InstalledModInfo {
         let parse_info = ModPayloadParseInfo::new(&compressed_path)?;
         parse_info.expand_archive_to_disk(&expanded_mod_dir_path)?;
 
-        let variant_file_info = ModFileInfo::from_uncompressed_path(&expanded_mod_dir_path);
+        let variant_file_info = VariantFileInfo::from_uncompressed_path(&expanded_mod_dir_path);
 
         let installed_var = InstalledVariant::new(var_name.clone(), variant_file_info);
         self.installed_variants.insert(var_name, installed_var);
@@ -496,7 +538,7 @@ pub struct InstalledVariant {
     pub(crate) name: String,
 
     /// Metadata describing the file associations between files and mod assets.
-    pub(crate) file_info: ModFileInfo,
+    pub(crate) file_info: VariantFileInfo,
 
     /// Overrides in use by the variant.
     pub(crate) overrides: Vec<VariantOverride>,
@@ -506,7 +548,7 @@ pub struct InstalledVariant {
 }
 
 impl InstalledVariant {
-    fn new(name: String, file_info: ModFileInfo) -> Self {
+    fn new(name: String, file_info: VariantFileInfo) -> Self {
         Self {
             name,
             file_info,
@@ -551,8 +593,11 @@ impl EnabledModFileAssociations {
     }
 
     /// Unless the serialized state is manipulated, enabling a mod should never
-    /// have any conflicts.
-    fn add_mod_info_to_global_lookup(&mut self, m_info: &ModFileInfo) {
+    /// have any conflicts. If it does, then it will not be added to this.
+    fn add_mod_info_to_global_lookup(
+        &mut self,
+        m_info: &VariantFileInfo,
+    ) -> Option<Vec<ConflictingModVariant>> {
         todo!()
     }
 

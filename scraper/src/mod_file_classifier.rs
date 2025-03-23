@@ -40,12 +40,12 @@ pub enum ModFileAssetAssociation {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct ModFileInfo {
+pub struct VariantFileInfo {
     mod_type: Vec<ModType>,
     owned_files: HashMap<ModFileAssetAssociation, Vec<Utf8PathBuf>>,
 }
 
-impl ModFileInfo {
+impl VariantFileInfo {
     /// Crawl the mod directory looking for any files that we can classify.
     pub fn from_uncompressed_path(p: &Utf8Path) -> Self {
         todo!()
@@ -54,7 +54,7 @@ impl ModFileInfo {
 
 #[derive(Debug)]
 struct FileOwnerDb {
-    mod_info: HashMap<ModId, ModFileInfo>,
+    mod_info: HashMap<ModId, VariantFileInfo>,
     files_with_associations: HashMap<Utf8PathBuf, ModId>,
 }
 

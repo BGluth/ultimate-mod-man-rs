@@ -5,16 +5,14 @@ use log::info;
 use thiserror::Error;
 use ultimate_mod_man_rs_scraper::banana_scraper::{BananaClient, BananaScraperError};
 use ultimate_mod_man_rs_utils::{
-    types::{
-        ModIdentifier, PickedResolutionOption, SkinSlotValue, VariantAndId, VariantAndIdentifier,
-    },
+    types::{PickedResolutionOption, SkinSlotValue, VariantAndId, VariantAndIdentifier},
     user_input_delegate::UserInputDelegate,
 };
 
 use crate::{
     cmds::status::StatusCmdInfo,
     in_prog_action::{Action, InProgAction},
-    mod_db::{ConflictingModVariant, ModDb, ModDbError, UnableToEnableReason},
+    mod_db::{ModDb, ModDbError, UnableToEnableReason, VariantConflictInfo},
     mod_name_resolver::{BananaModNameResolver, ModNameResolverError},
 };
 
@@ -86,7 +84,7 @@ impl<U: UserInputDelegate> ModManager<U> {
 
             self.db.add_variant(&key, downloaded_mod_variant)?;
 
-            if let Some(reason) = self.db.variant_enable_check(&key) {
+            if let Some(reason) = self.db.enable_variant(&key)? {
                 match reason {
                     UnableToEnableReason::Conflicts(conflicts) => {
                         info!("Conflicts detected when trying to enable {}!", key);
@@ -105,7 +103,7 @@ impl<U: UserInputDelegate> ModManager<U> {
     fn handle_variant_add_conflicts(
         &mut self,
         key: &VariantAndId,
-        variant_conflicts: &[ConflictingModVariant],
+        variant_conflicts: &VariantConflictInfo,
     ) {
         let summary = self
             .db
@@ -117,11 +115,12 @@ impl<U: UserInputDelegate> ModManager<U> {
                     key
                 )
             });
+
         self.user_input_delegate
             .display_variant_conflict_summary(&summary);
 
         // The mod that we want to enable has one or more conflicts with other mods.
-        for variant_conflict in variant_conflicts {
+        for variant_conflict in variant_conflicts.conflicts.iter() {
             // Start a "transaction" of configuring mods that takes effect once all
             // conflicts are resolved.
             let mut mod_db_txn = self.db.resolve_conflict(variant_conflict);
@@ -198,11 +197,49 @@ impl<U: UserInputDelegate> ModManager<U> {
         todo!()
     }
 
-    pub fn enable_disable<I: IntoIterator<Item = ModIdentifier>>(
+    pub async fn enable_disable<I: IntoIterator<Item = VariantAndIdentifier>>(
         &mut self,
+        idents: I,
         enable: bool,
     ) -> ModManagerResult<()> {
-        todo!()
+        for ident in idents {
+            let key = self
+                .mod_resolution_cache
+                .resolve_key(ident.clone(), &self.scraper)
+                .await?;
+
+            if !self.db.exists(&key) {
+                info!(
+                    "Skipping enabling the mod variant {} since it was not installed.",
+                    key
+                );
+                continue;
+            }
+
+            match enable {
+                false => {
+                    self.db.disable_variant(key);
+                },
+                true => {
+                    if let Some(reason) = self.db.enable_variant(&key)? {
+                        match reason {
+                            UnableToEnableReason::Conflicts(variant_conflicts) => {
+                                self.handle_variant_add_conflicts(&key, &variant_conflicts);
+                            },
+                            UnableToEnableReason::AlreadyEnabled => {
+                                info!(
+                                    "Skipping enabling the mod {} because it was already enabled.",
+                                    key
+                                );
+                                continue;
+                            },
+                        }
+                    }
+                },
+            }
+        }
+
+        Ok(())
     }
 
     pub fn resolve_conflicts(&mut self) -> ModManagerResult<()> {
@@ -225,18 +262,16 @@ impl<U: UserInputDelegate> ModManager<U> {
 
     fn cleanup_any_incomplete_in_prog_action(&mut self) -> ModManagerResult<()> {
         if let Some(in_prog_act) = self.db.get_in_prog_action_if_any()? {
-            self.remove_state_of_incomplete_in_prog_action(in_prog_act)?;
+            self.handle_incomplete_in_prog_action(in_prog_act)?;
         }
 
         Ok(())
     }
 
-    fn remove_state_of_incomplete_in_prog_action(
-        &mut self,
-        action: InProgAction,
-    ) -> ModManagerResult<()> {
+    fn handle_incomplete_in_prog_action(&mut self, action: InProgAction) -> ModManagerResult<()> {
         match action.deref() {
             Action::Add(key) => {
+                // Remove the mod that is partially enabled.
                 self.db.remove_variant(key)?;
             },
             Action::Remove(key) => {

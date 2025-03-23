@@ -99,17 +99,23 @@ impl DBLockFile {
 
 #[derive(Debug)]
 pub(crate) enum UnableToEnableReason {
-    Conflicts(Vec<ConflictingModVariant>),
+    Conflicts(VariantConflictInfo),
     AlreadyEnabled,
 }
 
 #[derive(Debug)]
-pub(crate) struct ConflictingModVariant {
+pub struct VariantConflictInfo {
+    pub key: VariantAndId,
+    pub conflicts: Vec<ConflictingModVariant>,
+}
+
+#[derive(Debug)]
+pub struct ConflictingModVariant {
     /// Key of the mod variant with unresolved conflicts.
-    pub(crate) key: VariantAndId,
+    pub key: VariantAndId,
 
     /// All slots that currently have a conflict.
-    pub(crate) slots: Vec<AssetSlot>,
+    pub slots: Vec<AssetSlot>,
 }
 
 #[derive(Debug)]
@@ -309,19 +315,13 @@ impl ModDb {
         todo!()
     }
 
-    /// Check if the mod is able to be enabled. This will check for conflicts
-    /// with any assets in the mod.
-    pub(crate) fn variant_enable_check(&self, key: &VariantAndId) -> Option<UnableToEnableReason> {
-        todo!()
-    }
-
     /// Attempts to enable the mod. If it can not be enabled, the reason along
     /// with additional info will be returned.
     pub(crate) fn enable_variant(
         &mut self,
-        key: VariantAndId,
+        key: &VariantAndId,
     ) -> ModDbResult<Option<UnableToEnableReason>> {
-        let var_info = self.directory_contents.get_variant_mut_expected(&key);
+        let var_info = self.directory_contents.get_variant_mut_expected(key);
 
         if var_info.enabled {
             return Ok(Some(UnableToEnableReason::AlreadyEnabled));
@@ -346,6 +346,8 @@ impl ModDb {
             "Tried disabled a mod variant that was already disabled! ({})",
             key
         );
+
+        var_info.enabled = false;
     }
 
     pub(crate) fn get_variant_conflict_summary(
@@ -596,8 +598,8 @@ impl EnabledModFileAssociations {
     /// have any conflicts. If it does, then it will not be added to this.
     fn add_mod_info_to_global_lookup(
         &mut self,
-        m_info: &VariantFileInfo,
-    ) -> Option<Vec<ConflictingModVariant>> {
+        var_info: &VariantFileInfo,
+    ) -> Option<VariantConflictInfo> {
         todo!()
     }
 

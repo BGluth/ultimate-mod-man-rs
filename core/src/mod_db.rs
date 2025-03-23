@@ -315,6 +315,12 @@ impl ModDb {
     ) -> ModDbConflictResolver {
         todo!()
     }
+
+    pub(crate) fn detect_any_overrides_that_are_no_longer_needed(
+        &self,
+    ) -> Vec<(VariantAndId, VariantOverride)> {
+        todo!()
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -469,30 +475,6 @@ impl InstalledModInfo {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub(crate) struct CharacterSlotsAndOverrides {
-    char_and_default_slots: CharSkinSlotValue,
-
-    /// In order to avoid conflicts (or if the user just wants a different
-    /// slot), we can override the original slot to something else.
-    slot_overrides: Vec<SlotOverride>,
-}
-
-impl CharacterSlotsAndOverrides {
-    fn new(char_and_default_slots: CharSkinSlotValue) -> Self {
-        Self {
-            char_and_default_slots,
-            slot_overrides: Vec::default(),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
-struct SlotOverride {
-    old: SkinSlotValue,
-    new: SkinSlotValue,
-}
-
 /// Info that we can use to detect version changes.
 ///
 /// There is really not much data available to detect version changes on
@@ -510,10 +492,10 @@ pub struct InstalledVariant {
     pub(crate) name: String,
 
     /// Metadata describing the file associations between files and mod assets.
-    pub file_info: ModFileInfo,
+    pub(crate) file_info: ModFileInfo,
 
-    /// Slots used by the skin variant and any overrides.
-    pub(crate) slots_and_overrides: CharacterSlotsAndOverrides,
+    /// Overrides in use by the variant.
+    pub(crate) overrides: Vec<VariantOverride>,
 
     /// Whether or not the mod is enabled.
     pub(crate) enabled: bool,
@@ -524,10 +506,25 @@ impl InstalledVariant {
         Self {
             name,
             file_info,
-            slots_and_overrides: todo!(),
+            overrides: Vec::default(),
             enabled: true,
         }
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub(crate) enum VariantOverride {
+    CharacterSkin(Override<SkinSlotValue>),
+    StageSkin(Override<StageSlotValue>),
+    Global(Override<Utf8PathBuf>),
+}
+
+/// A slot for a variant that has been overridden. This contains the mapping of
+/// the original slot to the set slot.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub(crate) struct Override<T> {
+    old: T,
+    new: T,
 }
 
 /// We also need to perform "global" lookups to detect conflicts. Specifically,
@@ -549,7 +546,8 @@ impl EnabledModFileAssociations {
         todo!()
     }
 
-    /// Will panic if another mod is already associated with an asset.
+    /// Unless the serialized state is manipulated, enabling a mod should never
+    /// have any conflicts.
     fn add_mod_info_to_global_lookup(&mut self, m_info: &ModFileInfo) {
         todo!()
     }

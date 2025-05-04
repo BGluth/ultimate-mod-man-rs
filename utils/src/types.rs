@@ -62,8 +62,8 @@ impl FromStr for ModIdentifier {
 impl Display for ModIdentifier {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            ModIdentifier::Id(id) => write!(f, "{}", id),
-            ModIdentifier::Name(name) => write!(f, "{}", name),
+            ModIdentifier::Id(id) => write!(f, "{id}"),
+            ModIdentifier::Name(name) => write!(f, "{name}"),
         }
     }
 }
@@ -165,9 +165,22 @@ pub enum AssetSlot {
 }
 
 #[derive(Debug)]
+pub enum SwappableAssetSlot {
+    CharacterSkin(CharSkinSlotValue),
+}
+
+#[derive(Debug)]
 pub enum AvailableSlotsToSwapToInfo {
     CharacterSkin(Vec<SkinSlotValue>),
     // TODO: Add music...
+}
+
+impl AvailableSlotsToSwapToInfo {
+    pub fn num_slot_open(&self) -> usize {
+        match self {
+            AvailableSlotsToSwapToInfo::CharacterSkin(skin_slot_values) => skin_slot_values.len(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -207,6 +220,9 @@ impl SkinSlotValue {
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct StageSlotValue(u8);
+
+#[derive(Clone, Copy, Debug)]
+pub struct PickedSwapOption(usize);
 
 #[derive(Debug)]
 pub enum PickedResolutionOption {

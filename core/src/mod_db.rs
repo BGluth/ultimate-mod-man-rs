@@ -44,7 +44,7 @@ use ultimate_mod_man_rs_utils::{
     types::{
         AssetSlot, AvailableSlotsToSwapToInfo, CharSkinSlotValue, ModId,
         PickedNonSwappableResolutionOption, PickedResolutionOption, SkinSlotIdx, SkinSlotValue,
-        StageSlotIdx, StageSlotValue, VariantAndId,
+        StageSlotIdx, StageSlotValue, SwappableAssetSlot, VariantAndId,
     },
     user_input_delegate::VariantConflictSummary,
     utils::{DeserializationError, deserialize_data_from_path},
@@ -369,6 +369,13 @@ impl ModDb {
     ) -> Vec<(VariantAndId, VariantOverride)> {
         todo!()
     }
+
+    pub(crate) fn get_available_slots_to_swap_to(
+        &self,
+        slot: &SwappableAssetSlot,
+    ) -> AvailableSlotsToSwapToInfo {
+        todo!()
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -639,30 +646,52 @@ pub(crate) enum AssetSlotChange {
     Global(Utf8PathBuf),
 }
 
+/// Stores information about a conflict and options to resolve it.
+#[derive(Debug)]
 pub(crate) enum AssetConflict {
-    CharacterSkin(CharacterSkinConflict),
-    Stage(StageSlotConflict),
-    Global(GlobalConflict),
+    Swappable(SwappableAssetConflict),
+    NonSwappable(NonSwappableAssetConflict),
 }
 
 impl AssetConflict {
     pub(crate) fn slot(&self) -> &AssetSlot {
         todo!()
     }
+}
 
-    pub(crate) fn swappable_info(&self) -> Option<AvailableSlotsToSwapToInfo> {
+#[derive(Debug)]
+pub enum NonSwappableAssetConflict {
+    Stage(StageSlotConflict),
+    Global(GlobalConflict),
+}
+
+#[derive(Debug)]
+pub enum SwappableAssetConflict {
+    CharacterSkin(CharacterSkinConflict),
+}
+
+impl SwappableAssetConflict {
+    pub(crate) fn existing(&self) -> SwappableAssetSlot {
+        match self {
+            SwappableAssetConflict::CharacterSkin(character_skin_conflict) => {
+                SwappableAssetSlot::CharacterSkin(character_skin_conflict.existing.clone())
+            },
+        }
+    }
+
+    pub(crate) fn slots_available_to_swap_into(&self) -> AvailableSlotsToSwapToInfo {
         match self {
             // TODO: Remove clone once we figure out API...
-            AssetConflict::CharacterSkin(character_skin_conflict) => {
-                Some(AvailableSlotsToSwapToInfo::CharacterSkin(
+            Self::CharacterSkin(character_skin_conflict) => {
+                AvailableSlotsToSwapToInfo::CharacterSkin(
                     character_skin_conflict.possible_resolutions.clone(),
-                ))
+                )
             },
-            _ => None,
         }
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct CharacterSkinConflict {
     existing: CharSkinSlotValue,
     possible_resolutions: Vec<SkinSlotValue>,
@@ -678,6 +707,7 @@ pub(crate) struct CharSkinSlotResolution {
     res: PickedResolutionOption,
 }
 
+#[derive(Debug)]
 pub(crate) struct StageSlotConflict {
     existing: StageSlotValue,
 }
@@ -691,10 +721,12 @@ impl StageSlotConflict {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct StageSkinSlotResolution {
     res: PickedNonSwappableResolutionOption,
 }
 
+#[derive(Debug)]
 pub(crate) struct GlobalConflict {
     existing: Utf8PathBuf,
 }

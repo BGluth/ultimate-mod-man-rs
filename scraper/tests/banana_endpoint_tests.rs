@@ -7,7 +7,7 @@ use ultimate_mod_man_rs_scraper::banana_scraper::BananaClient;
 use ultimate_mod_man_rs_utils::{
     types::{
         AssetSlot, AvailableSlotsToSwapToInfo, ModId, PickedNonSwappableResolutionOption,
-        PickedResolutionOption, VariantAndId,
+        PickedResolutionOption, SwappableAssetSlot, VariantAndId,
     },
     user_input_delegate::{UserInputDelegate, VariantConflictSummary},
 };
@@ -32,11 +32,19 @@ impl UserInputDelegate for DummyDelegate {
 
     fn display_variant_conflict_summary(&mut self, summary: &VariantConflictSummary) {}
 
+    fn choose_slot_to_swap_to(
+        &mut self,
+        slot: ultimate_mod_man_rs_utils::types::SwappableAssetSlot,
+        available_slots: &AvailableSlotsToSwapToInfo,
+    ) -> ultimate_mod_man_rs_utils::types::PickedSwapOption {
+        todo!()
+    }
+
     fn get_variant_conflict_resolution_option_swappable(
         &mut self,
         existing: &VariantAndId,
         new: &VariantAndId,
-        slot: &AssetSlot,
+        slot: &SwappableAssetSlot,
         available_slots: &AvailableSlotsToSwapToInfo,
     ) -> PickedResolutionOption {
         PickedResolutionOption::NonSwapOption(PickedNonSwappableResolutionOption::KeepExisting)

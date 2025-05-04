@@ -73,9 +73,8 @@ impl BananaClient {
         debug!("Resolving mod name \"{}\" to it's ID...", name);
 
         let search_req = format!(
-            "{}/apiv11/Util/Search/Results?_sModelName=Mod&_sOrder=best_match&_idGameRow=6498&\
-             _sSearchString={}&_csvFields=name&_nPage=1",
-            BANANA_ROOT, name
+            "{BANANA_ROOT}/apiv11/Util/Search/Results?_sModelName=Mod&_sOrder=best_match&\
+             _idGameRow=6498&_sSearchString={name}&_csvFields=name&_nPage=1"
         );
         let search_resp: SearchResp =
             serde_json::from_str(&self.client.get(search_req).send().await?.text().await?)?;

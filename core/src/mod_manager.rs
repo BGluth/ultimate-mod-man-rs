@@ -1,18 +1,24 @@
 use std::ops::Deref;
 
 use camino::Utf8Path;
-use log::info;
+use log::{info, warn};
 use thiserror::Error;
 use ultimate_mod_man_rs_scraper::banana_scraper::{BananaClient, BananaScraperError};
 use ultimate_mod_man_rs_utils::{
-    types::{PickedResolutionOption, SkinSlotValue, VariantAndId, VariantAndIdentifier},
-    user_input_delegate::UserInputDelegate,
+    types::{
+        AssetSlot, AvailableSlotsToSwapToInfo, PickedResolutionOption, SkinSlotValue,
+        SwappableAssetSlot, VariantAndId, VariantAndIdentifier,
+    },
+    user_input_delegate::{SlotInfo, UserInputDelegate},
 };
 
 use crate::{
     cmds::status::StatusCmdInfo,
     in_prog_action::{Action, InProgAction},
-    mod_db::{ModDb, ModDbError, UnableToEnableReason, VariantConflictInfo},
+    mod_db::{
+        AssetConflict, ModDb, ModDbError, SwappableAssetConflict, UnableToEnableReason,
+        VariantConflictInfo,
+    },
     mod_name_resolver::{BananaModNameResolver, ModNameResolverError},
 };
 
@@ -126,33 +132,37 @@ impl<U: UserInputDelegate> ModManager<U> {
             let mut mod_db_txn = self.db.resolve_conflict(variant_conflict);
 
             while let Some(sub_conflict) = mod_db_txn.get_next_conflict_to_resolve() {
-                let slot_conflict = sub_conflict.slot();
+                // let slot_conflict = sub_conflict.slot();
 
-                let picked_res = match sub_conflict.swappable_info() {
-                    Some(available_slots) => {
+                let swappable_conflict = match sub_conflict {
+                    // Asset is swappable.
+                    AssetConflict::Swappable(info) => {
                         // We can swap this.
+                        let swappable_slot = info.existing();
+                        let available_slots = info.slots_available_to_swap_into();
+
                         self.user_input_delegate
                             .get_variant_conflict_resolution_option_swappable(
                                 &variant_conflict.key,
                                 key,
-                                slot_conflict,
-                                &available_slots,
+                                &info.into(),
+                                available_slots.num_slot_open(),
                             )
                     },
-                    None => {
+                    AssetConflict::NonSwappable(info) => {
                         // Not swappable.
                         let res = self
                             .user_input_delegate
                             .get_variant_conflict_resolution_option_non_swappable(
                                 &variant_conflict.key,
                                 key,
-                                slot_conflict,
+                                todo!(),
                             );
                         PickedResolutionOption::NonSwapOption(res)
                     },
                 };
 
-                mod_db_txn.resolve_conflict(picked_res);
+                mod_db_txn.resolve_conflict(swappable_conflict);
             }
 
             // All conflicts have been resolved. Commit the changes to the DB.
@@ -242,18 +252,25 @@ impl<U: UserInputDelegate> ModManager<U> {
         Ok(())
     }
 
-    pub fn resolve_conflicts(&mut self) -> ModManagerResult<()> {
-        todo!()
-    }
-
-    pub fn change_slot(
+    pub async fn change_slot(
         &mut self,
-        k: VariantAndIdentifier,
-        char_key: &str,
-        s1: SkinSlotValue,
-        s2: SkinSlotValue,
+        ident: VariantAndIdentifier,
+        slot: SwappableAssetSlot,
     ) -> ModManagerResult<()> {
-        todo!()
+        let key = self
+            .mod_resolution_cache
+            .resolve_key(ident, &self.scraper)
+            .await?;
+
+        if !self.db.exists(&key) {
+            warn!("Mod variant {} does not exist!", key);
+        }
+
+        let available_slots = self.db.get_available_slots_to_swap_to(&slot);
+        self.user_input_delegate
+            .choose_slot_to_swap_to(slot, &available_slots);
+
+        Ok(())
     }
 
     pub fn switch_compare(&self) -> ModManagerResult<()> {
@@ -285,5 +302,11 @@ impl<U: UserInputDelegate> ModManager<U> {
         self.db.remove_in_prog_action()?;
 
         Ok(())
+    }
+}
+
+impl From<SwappableAssetConflict> for SlotInfo {
+    fn from(value: SwappableAssetConflict) -> Self {
+        todo!()
     }
 }
